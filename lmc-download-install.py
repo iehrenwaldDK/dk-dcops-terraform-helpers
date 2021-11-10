@@ -27,7 +27,7 @@ collector_version = ''
 collector_size = 'medium'
 collector_ea = 'false'
 collector_osAndArch = 'Linux64'
-collector_group_name = ''
+collector_group_ab = 'true'
 escalation_chain = ''
 configuration = logicmonitor_sdk.Configuration()
 
@@ -35,7 +35,7 @@ try:
     options, arguments = getopt.getopt(sys.argv[1:], "",
                                        ['access-id=', 'access-key=', 'company=', 'collector-id=',
                                         'collector-size=', 'collector-version=', 'collector-ea=',
-                                        'escalation-chain=', 'collector-group-name='])
+                                        'escalation-chain=', 'collector-group-ab='])
 except getopt.GetoptError as e:
     print("%s" % e)
     sys.exit(2)
@@ -65,9 +65,9 @@ for opt, arg in options:
     if opt in ('--escalation-chain'):
         print("Found esclation-chain arg: %s" % arg)
         escalation_chain = arg
-    if opt in ('--collector-group-name'):
-        print("Found collector-group-name: %s" % arg)
-        collector_group_name = arg
+    if opt in ('--collector-group-ab'):
+        print("Found collector-group-ab: %s" % arg)
+        collector_group_ab = arg
 
 if not configuration.access_id or \
    not configuration.access_key or \
@@ -144,7 +144,8 @@ if escalation_chain:
     except ApiException as e:
         print("Exception when calling LMApi->updateCollectorById: %s\n" % e)
 
-if auto_balance_collector_group:
+if collector_group_ab:
+    print("Enabling collector group auto balancing")
     print("Finding collector group for collector %d" % collector_id)
 #    collector_group_filter = 'id:"' + GCBID_response.collector_group_id + '"'
 #
@@ -160,10 +161,8 @@ if auto_balance_collector_group:
 #    else:
 #        print("    Search did not return exactly one result, aborting")
 #        sys.exit(1)
-
-    print("Retrieving collector group information")
     try:
-        GCGI_response = api_instance.get_collector_group_by_id(GCBID_response.collector_group_id
+        GCGI_response = api_instance.get_collector_group_by_id(GCBID_response.collector_group_id)
     except ApiException as e:
         print("Exception when calling LMApi->get_collector_group_by_id : %s\n" % e)
 
