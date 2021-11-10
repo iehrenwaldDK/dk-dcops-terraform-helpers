@@ -4,9 +4,13 @@ param(
     [Parameter(Mandatory=$True)][string] $access_key,
     [Parameter(Mandatory=$True)][string] $company,
     [Parameter(Mandatory=$True)][int] $collector_id,
-    [Parameter(Mandatory=$True)][string] $escalation_chain,
     [Parameter(Mandatory=$False)][string] $collector_size = "medium",
+    [Parameter(Mandatory=$False)][string] $collector_version,
+    [Parameter(Mandatory=$False)][bool] $collector_ea = $False,
+    [Parameter(Mandatory=$True)][string] $escalation_chain,
+    [Parameter(Mandatory=$False)][bool] $collector_group_ab = $True,
     [Parameter(Mandatory=$False)][bool] $update_help = $False,
+    [Parameter(Mandatory=$False)][bool] $install_collector = $True,
     [Parameter(Mandatory=$False)][bool] $install_nuget = $True,
     [Parameter(Mandatory=$False)][bool] $install_lmposh = $True
 )
@@ -33,20 +37,22 @@ if($install_lmposh -eq $True) {
 }
 
 $access_key_ss  = ConvertTo-SecureString -String $access_key -AsPlainText -Force
-$installer_path = Get-LogicMonitorCollectorInstaller -AccessId $access_id -AccessKey $access_key_ss -AccountName $company -Id $collector_id -Size $collector_size
-WriteToLog("INFO", "Installer path is $installer_path")
+if($install_collector -eq $True) {
+    $installer_path = Get-LogicMonitorCollectorInstaller -AccessId $access_id -AccessKey $access_key_ss -AccountName $company -Id $collector_id -Size $collector_size
+    WriteToLog("INFO", "Installer path is $installer_path")
 
-if($installer_path -eq "Error"){
-    WriteToLog("CRITICAL", "Error downloading collector, aborting")
-    exit
+    if($installer_path -eq "Error"){
+        WriteToLog("CRITICAL", "Error downloading collector, aborting")
+        exit
+    }
+
+    # This silently installs the LM Collector using LocalSystem user.  If we
+    #  find that we need to monitor domain connecter resources, we'll need a
+    #  LM specific domain user.  When if that happens, pass these args too:
+    #  (fill in something here)
+    WriteToLog("INFO", "Starting installer")
+    Invoke-Expression "$installer_path /q"
 }
-
-# This silently installs the LM Collector using LocalSystem user.  If we
-#  find that we need to monitor domain connecter resources, we'll need a 
-#  LM specific domain user.  When if that happens, pass these args too:
-#
-WriteToLog("INFO", "Starting installer")
-Invoke-Expression "$installer_path /q"
 
 WriteToLog("INFO", "Getting escalation chain ID for $escalation_chain")
 $escalation_chain_id = Get-LogicMonitorEscalationChain -AccessId $access_id -AccessKey $access_key_ss -AccountName $company -Name $escalation_chain
@@ -57,6 +63,10 @@ if($escalation_chain_id.Total -ne 1) {
 
 WriteToLog("INFO", "Setting escalation chain to $escalation_chain for $collector_id")
 Update-LogicMonitorCollectorProperty -AccessId $access_id -AccessKey $access_key_ss -AccountName $company -Id $collector_id -PropertyNames @('escalatingChainId') -PropertyValues @($escalation_chain_id.Items.id)
+
+# Eventually have feature parity with the python version of this script, which
+#  would get the collector info, find the corresponding device, set a 
+#  correct hostname, and enable auto-balancing.
 
 WriteToLog("INFO", "Exiting at bottom of script")
 
