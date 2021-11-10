@@ -145,22 +145,7 @@ if escalation_chain:
         print("Exception when calling LMApi->updateCollectorById: %s\n" % e)
 
 if collector_group_ab:
-    print("Enabling collector group auto balancing")
-    print("Finding collector group for collector %d" % collector_id)
-#    collector_group_filter = 'id:"' + GCBID_response.collector_group_id + '"'
-#
-#    try:
-#        GCGL_response = api_instance.get_collector_group_list(
-#            filter=collector_group_filter)
-#    except ApiException as e:
-#        print("Exception when calling LMApi->get_collector_group_list: %s\n" % e)
-#
-#    if GCGL_response.total == 1:
-#        collector_group_id = GCGL_response.items[0].id
-#        print("    Found collector group id %d" % collector_group_id)
-#    else:
-#        print("    Search did not return exactly one result, aborting")
-#        sys.exit(1)
+    print("Finding collector group id %s for autobalancing" % GCBID_response.collector_group_id)
     try:
         GCGI_response = api_instance.get_collector_group_by_id(GCBID_response.collector_group_id)
     except ApiException as e:
@@ -170,7 +155,7 @@ if collector_group_ab:
     updated_data.auto_balance = 'true'
     updated_data.auto_balance_instance_count_threshold = '10000'
 
-    print("Enabling auto-balancing on collector group")
+    print("    Enabling auto-balancing on collector group")
     try:
         PCGBI_response = api_instance.patch_collector_group_by_id(
           collector_group_id, updated_data)
@@ -178,3 +163,4 @@ if collector_group_ab:
         print("Exception when calling LMApi->patch_collector_group_by_id : %s\n" % e)
 
 print("Exiting at bottom of the script")
+
