@@ -158,7 +158,7 @@ if collector_group_ab:
     print("    Enabling auto-balancing on collector group")
     try:
         PCGBI_response = api_instance.patch_collector_group_by_id(
-          collector_group_id, updated_data)
+          GCBID_response.collector_group_id, updated_data)
     except ApiException as e:
         print("Exception when calling LMApi->patch_collector_group_by_id : %s\n" % e)
 
