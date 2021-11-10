@@ -27,6 +27,7 @@ collector_version = ''
 collector_size = 'medium'
 collector_ea = 'false'
 collector_osAndArch = 'Linux64'
+collector_group_name = ''
 escalation_chain = ''
 configuration = logicmonitor_sdk.Configuration()
 
@@ -34,7 +35,7 @@ try:
     options, arguments = getopt.getopt(sys.argv[1:], "",
                                        ['access-id=', 'access-key=', 'company=', 'collector-id=',
                                         'collector-size=', 'collector-version=', 'collector-ea=',
-                                        'escalation-chain='])
+                                        'escalation-chain=', 'collector-group-name='])
 except getopt.GetoptError as e:
     print("%s" % e)
     sys.exit(2)
@@ -64,6 +65,9 @@ for opt, arg in options:
     if opt in ('--escalation-chain'):
         print("Found esclation-chain arg: %s" % arg)
         escalation_chain = arg
+    if opt in ('--collector-group-name'):
+        print("Found collector-group-name: %s" % arg)
+        collector_group_name = arg
 
 if not configuration.access_id or \
    not configuration.access_key or \
@@ -139,5 +143,39 @@ if escalation_chain:
             collector_id, updated_data)
     except ApiException as e:
         print("Exception when calling LMApi->updateCollectorById: %s\n" % e)
+
+if collector_group_name:
+    print("Finding requested collector group to enable auto-balancing")
+    collector_group_filter = 'name:"' + collector_group_name + '"'
+
+    try:
+        GCGL_response = api_instance.get_collector_group_list(
+            filter=collector_group_filter)
+    except ApiException as e:
+        print("Exception when calling LMApi->get_collector_group_list: %s\n" % e)
+
+    if GCGL_response.total == 1:
+        collector_group_id = GCGL_response.items[0].id
+        print("    Found collector group id %d" % collector_group_id)
+    else:
+        print("    Search did not return exactly one result, aborting")
+        sys.exit(1)
+
+    print("Retrieving collector group information")
+    try:
+        GCGI_response = api_instance.get_collector_group_by_id(collector_group_id)
+    except ApiException as e:
+        print("Exception when calling LMApi->get_collector_group_by_id : %s\n" % e)
+
+    updated_data = GCGI_response
+    updated_data.auto_balance = 'true'
+    updated_data.auto_balance_instance_count_threshold = '10000'
+
+    print("Enabling auto-balancing on collector group")
+    try:
+        PCGBI_response = api_instance.patch_collector_group_by_id(
+          collector_group_id, updated_data)
+    except ApiException as e:
+        print("Exception when calling LMApi->patch_collector_group_by_id : %s\n" % e)
 
 print("Exiting at bottom of the script")
