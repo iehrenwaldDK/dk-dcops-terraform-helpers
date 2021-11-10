@@ -144,26 +144,26 @@ if escalation_chain:
     except ApiException as e:
         print("Exception when calling LMApi->updateCollectorById: %s\n" % e)
 
-if collector_group_name:
-    print("Finding requested collector group to enable auto-balancing")
-    collector_group_filter = 'name:"' + collector_group_name + '"'
-
-    try:
-        GCGL_response = api_instance.get_collector_group_list(
-            filter=collector_group_filter)
-    except ApiException as e:
-        print("Exception when calling LMApi->get_collector_group_list: %s\n" % e)
-
-    if GCGL_response.total == 1:
-        collector_group_id = GCGL_response.items[0].id
-        print("    Found collector group id %d" % collector_group_id)
-    else:
-        print("    Search did not return exactly one result, aborting")
-        sys.exit(1)
+if auto_balance_collector_group:
+    print("Finding collector group for collector %d" % collector_id)
+#    collector_group_filter = 'id:"' + GCBID_response.collector_group_id + '"'
+#
+#    try:
+#        GCGL_response = api_instance.get_collector_group_list(
+#            filter=collector_group_filter)
+#    except ApiException as e:
+#        print("Exception when calling LMApi->get_collector_group_list: %s\n" % e)
+#
+#    if GCGL_response.total == 1:
+#        collector_group_id = GCGL_response.items[0].id
+#        print("    Found collector group id %d" % collector_group_id)
+#    else:
+#        print("    Search did not return exactly one result, aborting")
+#        sys.exit(1)
 
     print("Retrieving collector group information")
     try:
-        GCGI_response = api_instance.get_collector_group_by_id(collector_group_id)
+        GCGI_response = api_instance.get_collector_group_by_id(GCBID_response.collector_group_id
     except ApiException as e:
         print("Exception when calling LMApi->get_collector_group_by_id : %s\n" % e)
 
