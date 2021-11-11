@@ -221,7 +221,7 @@ except ApiException as e:
 
 # Set the custom properties of the collector device resource to include SNMPv3
 #  settings
-if SNMP_SECURITY && SNMP_AUTH && SNMP_AUTHTOKEN && SNMP_PRIV && SNMP_PRIVTOKEN:
+if SNMP_SECURITY and SNMP_AUTH and SNMP_AUTHTOKEN and SNMP_PRIV and SNMP_PRIVTOKEN:
 	print("Setting SNMPv3 custom properties on collector device")
 	updated_data.custom_properties["snmp.version"] = "v3"
 	updated_data.custom_properties["snmp.security"] = SNMP_SECURITY
