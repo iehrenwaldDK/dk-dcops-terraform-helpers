@@ -27,9 +27,9 @@ SKIP_DOWNLOAD = False
 SKIP_INSTALL = False
 SNMP_SECURITY = ''
 SNMP_AUTH = ''
-SNMP_AUTHTOKEN = ''
+SNMP_AUTH_TOKEN = ''
 SNMP_PRIV = ''
-SNMP_PRIVTOKEN = ''
+SNMP_PRIV_TOKEN = ''
 
 configuration = logicmonitor_sdk.Configuration()
 
@@ -38,66 +38,50 @@ try:
                        ['access-id=', 'access-key=', 'company=', 'collector-id=',
                     'collector-size=', 'collector-version=', 'collector-ea=',
                     'escalation-chain=', 'collector-group-ab=',
-                    'skip-download=', 'skip-install=',
-                    'snmp-security=', 'snmp-auth=', 'snmp-authtoken=',
-                    'snmp-priv=', 'snmp-privtoken='])
+                    'skip-download', 'skip-install',
+                    'snmp-security=', 'snmp-auth-token=', 'snmp-auth=',
+                    'snmp-priv-token=', 'snmp-priv='])
 except getopt.GetoptError as e:
     print(f"{e}")
     sys.exit(2)
 for opt, arg in options:
     if opt in ('--company'):
-        print(f"Found company arg: {arg}")
         configuration.company = arg
         COMPANY_SET = True
-    if opt in ('--access-id'):
-        print(f"Found access-id arg: {arg}")
+    elif opt in ('--access-id'):
         configuration.access_id = arg
-    if opt in ('--access-key'):
-        print(f"Found access-key arg: {arg}")
+    elif opt in ('--access-key'):
         configuration.access_key = arg
 
-    if opt in ('--collector-id'):
-        print(f"Found collector-id arg: {arg}")
+    elif opt in ('--collector-id'):
         COLLECTOR_ID = arg
-    if opt in ('--collector-version'):
-        print(f"Found collector-version arg: {arg}")
+    elif opt in ('--collector-version'):
         COLLECTOR_VERSION = arg
-    if opt in ('--collector-size'):
-        print(f"Found collector-size arg: {arg}")
+    elif opt in ('--collector-size'):
         COLLECTOR_SIZE = arg
-    if opt in ('--collector-ea'):
-        print(f"Found collector-ea arg: {arg}")
+    elif opt in ('--collector-ea'):
         COLLECTOR_EA = arg
 
-    if opt in ('--escalation-chain'):
-        print(f"Found esclation-chain arg: {arg}")
+    elif opt in ('--escalation-chain'):
         ESCALATION_CHAIN = arg
-    if opt in ('--collector-group-ab'):
-        print(f"Found collector-group-ab: {arg}")
+    elif opt in ('--collector-group-ab'):
         COLLECTOR_GROUP_AB = arg
 
-    if opt in ('--skip-download'):
-        print(f"Found skip-download: {arg}")
-        SKIP_DOWNLOAD = arg
-    if opt in ('--skip-install'):
-        print(f"Found skip-install: {arg}")
-        SKIP_INSTALL = arg
+    elif opt in ('--skip-download'):
+        SKIP_DOWNLOAD = True
+    elif opt in ('--skip-install'):
+        SKIP_INSTALL = True
 
-    if opt in ('--snmp-security'):
-        print(f"Found snmp-security: {arg}")
+    elif opt in ('--snmp-security'):
         SNMP_SECURITY = arg
-    if opt in ('--snmp-auth'):
-        print(f"Found snmp-auth: {arg}")
+    elif opt in ('--snmp-auth'):
         SNMP_AUTH = arg
-    if opt in ('--snmp-authtoken'):
-        print(f"Found snmp-authtoken: {arg}")
-        SNMP_AUTHTOKEN = arg
-    if opt in ('--snmp-priv'):
-        print(f"Found snmp-priv: {arg}")
+    elif opt in ('--snmp-priv'):
         SNMP_PRIV = arg
-    if opt in ('--snmp-privtoken'):
-        print(f"Found snmp-privtoken: {arg}")
-        SNMP_PRIVTOKEN = arg
+    elif opt in ('--snmp-auth-token'):
+        SNMP_AUTH_TOKEN = arg
+    elif opt in ('--snmp-priv-token'):
+        SNMP_PRIV_TOKEN = arg
 
 if not configuration.access_id or \
    not configuration.access_key or \
@@ -110,15 +94,15 @@ api_instance = logicmonitor_sdk.LMApi(
     logicmonitor_sdk.ApiClient(configuration))
 
 # Create and download the installer binary for the collector
-print(f"Attempting to download installer for id={COLLECTOR_ID} size={COLLECTOR_SIZE} osAndArch={COLLECTOR_OSANDARCH}")
 try:
     GCI_response = api_instance.get_collector_installer(
-        COLLECTOR_ID,
-        COLLECTOR_OSANDARCH,
+        collector_id=COLLECTOR_ID,
+        os_and_arch=COLLECTOR_OSANDARCH,
         collector_size=COLLECTOR_SIZE,
         use_ea=COLLECTOR_EA)
     if GCI_response.status != 200:
-        print(f"FATAL: HTTP Response status code was {GCI_response.status} and we want 200, exiting")
+        print(f"FATAL: HTTP Response status code was {GCI_response.status} \
+                and we want 200, exiting")
         sys.exit(1)
     print(f"LM API responded with code {GCI_response.status}")
     if SKIP_DOWNLOAD is False:
@@ -168,7 +152,7 @@ if ESCALATION_CHAIN:
 
     print("Retrieving new collector information")
     try:
-        GCBID_response = api_instance.get_collector_by_id(COLLECTOR_ID)
+        GCBID_response = api_instance.get_collector_by_id(id=COLLECTOR_ID)
     except ApiException as e:
         print(f"Exception when calling LMApi->getCollectorById: {e}\n")
 
@@ -178,7 +162,8 @@ if ESCALATION_CHAIN:
     print("Setting escalation chain ID on new collector")
     try:
         PCBI_response = api_instance.patch_collector_by_id(
-            COLLECTOR_ID, updated_data)
+            id=COLLECTOR_ID,
+            body=updated_data)
     except ApiException as e:
         print(f"Exception when calling LMApi->updateCollectorById: {e}\n")
 
@@ -198,7 +183,8 @@ if COLLECTOR_GROUP_AB:
     print("    Enabling auto-balancing on collector group")
     try:
         PCGBI_response = api_instance.patch_collector_group_by_id(
-          GCBID_response.collector_group_id, updated_data)
+          id=GCBID_response.collector_group_id,
+          body=updated_data)
     except ApiException as e:
         print(f"Exception when calling LMApi->patch_collector_group_by_id: {e}\n")
 
@@ -212,30 +198,31 @@ except ApiException as e:
 
 updated_data = GDBID_response
 updated_data.display_name = GCBID_response.hostname
+
 try:
-    PDBID_response = api_instance.patch_device(
-        GCBID_response.collector_device_id,
-        updated_data)
+    PD_response = api_instance.patch_device(
+        id=GCBID_response.collector_device_id,
+        body=updated_data)
 except ApiException as e:
     print(f"Exception when calling LMApi->patchDevice: {e}\n")
 
 # Set the custom properties of the collector device resource to include SNMPv3
 #  settings
-if SNMP_SECURITY and SNMP_AUTH and SNMP_AUTHTOKEN and SNMP_PRIV and SNMP_PRIVTOKEN:
-	print("Setting SNMPv3 custom properties on collector device")
-	updated_data.custom_properties["snmp.version"] = "v3"
-	updated_data.custom_properties["snmp.security"] = SNMP_SECURITY
-	updated_data.custom_properties["snmp.auth"] = SNMP_AUTH
-	updated_data.custom_properties["snmp.authToken"] = SNMP_AUTHTOKEN
-	updated_data.custom_properties["snmp.priv"] = SNMP_PRIV
-	updated_data.custom_properties["snmp.privToken"] = SNMP_PRIVTOKEN
+if SNMP_SECURITY and SNMP_AUTH and SNMP_AUTH_TOKEN and SNMP_PRIV and SNMP_PRIV_TOKEN:
+    print("Setting SNMPv3 custom properties on collector device")
+    updated_data.custom_properties.append({'name':'snmp.security', 'value': SNMP_SECURITY})
+    updated_data.custom_properties.append({'name':'snmp.auth', 'value': SNMP_AUTH})
+    updated_data.custom_properties.append({'name':'snmp.priv', 'value': SNMP_PRIV})
+    updated_data.custom_properties.append({'name':'snmp.authToken', 'value': SNMP_AUTH_TOKEN})
+    updated_data.custom_properties.append({'name':'snmp.privToken', 'value': SNMP_PRIV_TOKEN})
 
-	try:
-		PDBID_response = api_instance.patch_device(
-			GCBID_response.collector_device_id,
-			updated_data)
-	except ApiException as e:
-		print(f"Exception when calling LMApi->patchDevice: {e}\n")
+    try:
+        PD_response = api_instance.patch_device(
+                        id=GCBID_response.collector_device_id,
+                        body=updated_data,
+                        op_type='replace')
+    except ApiException as e:
+        print(f"Exception when calling LMApi->patchDevice: {e}\n")
 
 # If we've reached here, hopefully all has gone well
 print("Exiting at bottom of the script")
