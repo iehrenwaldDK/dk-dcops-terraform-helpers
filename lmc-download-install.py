@@ -25,6 +25,12 @@ COLLECTOR_GROUP_AB = 'true'
 ESCALATION_CHAIN = ''
 SKIP_DOWNLOAD = False
 SKIP_INSTALL = False
+SNMP_SECURITY = ''
+SNMP_AUTH = ''
+SNMP_AUTHTOKEN = ''
+SNMP_PRIV = ''
+SNMP_PRIVTOKEN = ''
+
 configuration = logicmonitor_sdk.Configuration()
 
 try:
@@ -32,7 +38,9 @@ try:
                        ['access-id=', 'access-key=', 'company=', 'collector-id=',
                     'collector-size=', 'collector-version=', 'collector-ea=',
                     'escalation-chain=', 'collector-group-ab=',
-                    'skip-download=', 'skip-install='])
+                    'skip-download=', 'skip-install=',
+                    'snmp-security=', 'snmp-auth=', 'snmp-authtoken=',
+                    'snmp-priv=', 'snmp-privtoken='])
 except getopt.GetoptError as e:
     print(f"{e}")
     sys.exit(2)
@@ -47,6 +55,7 @@ for opt, arg in options:
     if opt in ('--access-key'):
         print(f"Found access-key arg: {arg}")
         configuration.access_key = arg
+
     if opt in ('--collector-id'):
         print(f"Found collector-id arg: {arg}")
         COLLECTOR_ID = arg
@@ -59,18 +68,36 @@ for opt, arg in options:
     if opt in ('--collector-ea'):
         print(f"Found collector-ea arg: {arg}")
         COLLECTOR_EA = arg
+
     if opt in ('--escalation-chain'):
         print(f"Found esclation-chain arg: {arg}")
         ESCALATION_CHAIN = arg
     if opt in ('--collector-group-ab'):
         print(f"Found collector-group-ab: {arg}")
         COLLECTOR_GROUP_AB = arg
+
     if opt in ('--skip-download'):
         print(f"Found skip-download: {arg}")
         SKIP_DOWNLOAD = arg
     if opt in ('--skip-install'):
         print(f"Found skip-install: {arg}")
         SKIP_INSTALL = arg
+
+    if opt in ('--snmp-security'):
+        print(f"Found snmp-security: {arg}")
+        SNMP_SECURITY = arg
+    if opt in ('--snmp-auth'):
+        print(f"Found snmp-auth: {arg}")
+        SNMP_AUTH = arg
+    if opt in ('--snmp-authtoken'):
+        print(f"Found snmp-authtoken: {arg}")
+        SNMP_AUTHTOKEN = arg
+    if opt in ('--snmp-priv'):
+        print(f"Found snmp-priv: {arg}")
+        SNMP_PRIV = arg
+    if opt in ('--snmp-privtoken'):
+        print(f"Found snmp-privtoken: {arg}")
+        SNMP_PRIVTOKEN = arg
 
 if not configuration.access_id or \
    not configuration.access_key or \
@@ -191,6 +218,24 @@ try:
         updated_data)
 except ApiException as e:
     print(f"Exception when calling LMApi->patchDevice: {e}\n")
+
+# Set the custom properties of the collector device resource to include SNMPv3
+#  settings
+if SNMP_SECURITY && SNMP_AUTH && SNMP_AUTHTOKEN && SNMP_PRIV && SNMP_PRIVTOKEN:
+	print("Setting SNMPv3 custom properties on collector device")
+	updated_data.custom_properties["snmp.version"] = "v3"
+	updated_data.custom_properties["snmp.security"] = SNMP_SECURITY
+	updated_data.custom_properties["snmp.auth"] = SNMP_AUTH
+	updated_data.custom_properties["snmp.authToken"] = SNMP_AUTHTOKEN
+	updated_data.custom_properties["snmp.priv"] = SNMP_PRIV
+	updated_data.custom_properties["snmp.privToken"] = SNMP_PRIVTOKEN
+
+	try:
+		PDBID_response = api_instance.patch_device(
+			GCBID_response.collector_device_id,
+			updated_data)
+	except ApiException as e:
+		print(f"Exception when calling LMApi->patchDevice: {e}\n")
 
 # If we've reached here, hopefully all has gone well
 print("Exiting at bottom of the script")
