@@ -10,7 +10,7 @@ from pprint import pprint
 import logicmonitor_sdk
 from logicmonitor_sdk.rest import ApiException
 
-print("LogicMonitor Collector download script starting")
+print("LogicMonitor Collector download/install/configure script starting")
 
 if os.geteuid() != 0:
     sys.exit("You need to be root to run this.\n")
@@ -101,8 +101,7 @@ try:
         collector_size=COLLECTOR_SIZE,
         use_ea=COLLECTOR_EA)
     if GCI_response.status != 200:
-        print(f"FATAL: HTTP Response status code was {GCI_response.status} \
-                and we want 200, exiting")
+        print(f"FATAL: HTTP Response status code was {GCI_response.status} and we want 200, exiting")
         sys.exit(1)
     print(f"LM API responded with code {GCI_response.status}")
     if SKIP_DOWNLOAD is False:
@@ -209,7 +208,7 @@ except ApiException as e:
 # Set the custom properties of the collector device resource to include SNMPv3
 #  settings
 if SNMP_SECURITY and SNMP_AUTH and SNMP_AUTH_TOKEN and SNMP_PRIV and SNMP_PRIV_TOKEN:
-    print("Setting SNMPv3 custom properties on collector device")
+    print(f"Setting SNMPv3 custom properties on device {GCBID_response.collector_device_id}")
     updated_data.custom_properties.append({'name':'snmp.security', 'value': SNMP_SECURITY})
     updated_data.custom_properties.append({'name':'snmp.auth', 'value': SNMP_AUTH})
     updated_data.custom_properties.append({'name':'snmp.priv', 'value': SNMP_PRIV})
