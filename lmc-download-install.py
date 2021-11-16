@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import getopt
@@ -7,6 +7,8 @@ import subprocess
 import sys
 import tempfile
 from pprint import pprint
+from random import randint
+from time import sleep
 import logicmonitor_sdk
 from logicmonitor_sdk.rest import ApiException
 
@@ -21,7 +23,9 @@ COLLECTOR_VERSION = ''
 COLLECTOR_SIZE = 'medium'
 COLLECTOR_EA = 'false'
 COLLECTOR_OSANDARCH = 'Linux64'
-COLLECTOR_GROUP_AB = 'true'
+COLLECTOR_GROUP_NAME = ''
+COLLECTOR_GROUP_AB = 'false'
+ENABLE_FAILOVER = 'false'
 ESCALATION_CHAIN = ''
 SKIP_DOWNLOAD = False
 SKIP_INSTALL = False
@@ -38,6 +42,7 @@ try:
                        ['access-id=', 'access-key=', 'company=', 'collector-id=',
                     'collector-size=', 'collector-version=', 'collector-ea=',
                     'escalation-chain=', 'collector-group-ab=',
+                    'collector-group-name=', 'enable-failover='
                     'skip-download', 'skip-install',
                     'snmp-security=', 'snmp-auth-token=', 'snmp-auth=',
                     'snmp-priv-token=', 'snmp-priv='])
@@ -66,6 +71,8 @@ for opt, arg in options:
         ESCALATION_CHAIN = arg
     elif opt in ('--collector-group-ab'):
         COLLECTOR_GROUP_AB = arg
+    elif opt in ('--collector-group-name'):
+        COLLECTOR_GROUP_NAME = arg
 
     elif opt in ('--skip-download'):
         SKIP_DOWNLOAD = True
@@ -82,6 +89,9 @@ for opt, arg in options:
         SNMP_AUTH_TOKEN = arg
     elif opt in ('--snmp-priv-token'):
         SNMP_PRIV_TOKEN = arg
+
+    elif opt in ('--enable-failover'):
+        ENABLE_FAILOVER = True
 
 if not configuration.access_id or \
    not configuration.access_key or \
@@ -101,7 +111,7 @@ try:
         collector_size=COLLECTOR_SIZE,
         use_ea=COLLECTOR_EA)
     if GCI_response.status != 200:
-        print(f"FATAL: HTTP Response status code was {GCI_response.status} and we want 200, exiting")
+        print(f"FATAL: HTTP Response code was {GCI_response.status} and we want 200, exiting")
         sys.exit(1)
     print(f"LM API responded with code {GCI_response.status}")
     if SKIP_DOWNLOAD is False:
@@ -160,7 +170,7 @@ if ESCALATION_CHAIN:
 
     print("Setting escalation chain ID on new collector")
     try:
-        PCBI_response = api_instance.patch_collector_by_id(
+        PCBID_response = api_instance.patch_collector_by_id(
             id=COLLECTOR_ID,
             body=updated_data)
     except ApiException as e:
@@ -171,17 +181,17 @@ if ESCALATION_CHAIN:
 if COLLECTOR_GROUP_AB:
     print(f"Finding collector group id {GCBID_response.collector_group_id} for autobalancing")
     try:
-        GCGI_response = api_instance.get_collector_group_by_id(GCBID_response.collector_group_id)
+        GCGBID_response = api_instance.get_collector_group_by_id(GCBID_response.collector_group_id)
     except ApiException as e:
         print(f"Exception when calling LMApi->get_collector_group_by_id: {e}\n")
 
-    updated_data = GCGI_response
+    updated_data = GCGBID_response
     updated_data.auto_balance = 'true'
     updated_data.auto_balance_instance_count_threshold = '10000'
 
     print("    Enabling auto-balancing on collector group")
     try:
-        PCGBI_response = api_instance.patch_collector_group_by_id(
+        PCGBID_response = api_instance.patch_collector_group_by_id(
           id=GCBID_response.collector_group_id,
           body=updated_data)
     except ApiException as e:
@@ -222,6 +232,79 @@ if SNMP_SECURITY and SNMP_AUTH and SNMP_AUTH_TOKEN and SNMP_PRIV and SNMP_PRIV_T
                         op_type='replace')
     except ApiException as e:
         print(f"Exception when calling LMApi->patchDevice: {e}\n")
+
+if ENABLE_FAILOVER:
+    if not COLLECTOR_GROUP_NAME:
+        print("Collector failover setup requested but no collector group name provided, aborting")
+        sys.exit(1)
+
+    # Why are we sleeping a random time?  So we give all collectors a chance
+    #  to download/install/configure/verify.  It's safe for this to run on
+    #  all collectors.
+    SLEEP_MIN=120
+    SLEEP_MAX=300
+    sleep_time = randint(SLEEP_MIN,SLEEP_MAX)
+    print(f"Sleeping {sleep_time} seconds and then beginning failover setup")
+    sleep(sleep_time)
+
+    print(f">> Finding collectors within group '{COLLECTOR_GROUP_NAME}'")
+    try:
+        GCL_filter = 'collectorGroupName:"' + COLLECTOR_GROUP_NAME + '"'
+        GCL_response = api_instance.get_collector_list(
+            fields="id,backupAgentId,enableFailBack,enableFailOverOnCollectorDevice",
+            filter=GCL_filter)
+    except ApiException as e:
+        print(f"Exception when calling LMApi->getEscalationChainList: {e}\n")
+
+    if GCL_response.total == 0:
+        print(">>> No matches for the search, aborting")
+        sys.exit(1)
+
+    if GCL_response.total < 2:
+        print(">>> There are less than two collectors in the group, aborting")
+        sys.exit(1)
+
+    MY_INDEX = 0
+    updated_data = GCL_response.items
+    # This is a little tricky
+    for index,element in enumerate(updated_data):
+        if index+1 >= GCL_response.total:
+            MY_INDEX = 0
+        else:
+            MY_INDEX += 1
+
+        print(f">> Setting collector {GCL_response.items[MY_INDEX].id} as "
+              f"backup for {updated_data[index].id}")
+        updated_data[index].backup_agent_id = GCL_response.items[MY_INDEX].id
+        updated_data[index].enable_fail_back = True
+        updated_data[index].enable_fail_over_on_collector_device = False
+
+        try:
+            PCBID_response = api_instance.patch_collector_by_id(
+                id=GCL_response.items[index].id,
+                body=updated_data[index])
+        except ApiException as e:
+            print(f"Exception when calling LMApi->patch_collector_by_id: {e}\n")
+
+        print(">>> Verifying")
+        try:
+            GCBID_response = api_instance.get_collector_by_id(
+                id=GCL_response.items[index].id,
+                fields="id,backupAgentId,enableFailBack,enableFailOverOnCollectorDevice")
+        except ApiException as e:
+            print(f"Exception when calling LMApi->getCollectorById: {e}\n")
+
+        if GCBID_response.backup_agent_id != GCL_response.items[MY_INDEX].id or \
+          GCBID_response.enable_fail_back is not True or \
+          GCBID_response.enable_fail_over_on_collector_device is not False:
+            print(">>>> Failed, received values: "
+                   f"backup_agent_id={GCBID_response.backup_agent_id} "
+                   f"enable_fail_back={GCBID_response.enable_fail_back} "
+                   f"enable_fail_over_on_collector_device="
+                   f"{GCBID_response.enable_fail_over_on_collector_device}")
+            sys.exit(1)
+        else:
+            print(">>>> Success")
 
 # If we've reached here, hopefully all has gone well
 print("Exiting at bottom of the script")
