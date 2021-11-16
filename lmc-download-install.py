@@ -23,7 +23,7 @@ COLLECTOR_VERSION = ''
 COLLECTOR_SIZE = 'medium'
 COLLECTOR_EA = 'false'
 COLLECTOR_OSANDARCH = 'Linux64'
-COLLECTOR_GROUP_NAME = ''
+COLLECTOR_GROUP_ID = ''
 COLLECTOR_GROUP_AB = 'false'
 ENABLE_FAILOVER = 'false'
 ESCALATION_CHAIN = ''
@@ -42,7 +42,7 @@ try:
                        ['access-id=', 'access-key=', 'company=', 'collector-id=',
                     'collector-size=', 'collector-version=', 'collector-ea=',
                     'escalation-chain=', 'collector-group-ab=',
-                    'collector-group-name=', 'enable-failover='
+                    'collector-group-id=', 'enable-failover='
                     'skip-download', 'skip-install',
                     'snmp-security=', 'snmp-auth-token=', 'snmp-auth=',
                     'snmp-priv-token=', 'snmp-priv='])
@@ -71,8 +71,8 @@ for opt, arg in options:
         ESCALATION_CHAIN = arg
     elif opt in ('--collector-group-ab'):
         COLLECTOR_GROUP_AB = arg
-    elif opt in ('--collector-group-name'):
-        COLLECTOR_GROUP_NAME = arg
+    elif opt in ('--collector-group-id'):
+        COLLECTOR_GROUP_ID = arg
 
     elif opt in ('--skip-download'):
         SKIP_DOWNLOAD = True
@@ -234,8 +234,8 @@ if SNMP_SECURITY and SNMP_AUTH and SNMP_AUTH_TOKEN and SNMP_PRIV and SNMP_PRIV_T
         print(f"Exception when calling LMApi->patchDevice: {e}\n")
 
 if ENABLE_FAILOVER:
-    if not COLLECTOR_GROUP_NAME:
-        print("Collector failover setup requested but no collector group name provided, aborting")
+    if not COLLECTOR_GROUP_ID:
+        print("Collector failover setup requested but no collector group id provided, aborting")
         sys.exit(1)
 
     # Why are we sleeping a random time?  So we give all collectors a chance
@@ -247,9 +247,9 @@ if ENABLE_FAILOVER:
     print(f"Sleeping {sleep_time} seconds and then beginning failover setup")
     sleep(sleep_time)
 
-    print(f">> Finding collectors within group '{COLLECTOR_GROUP_NAME}'")
+    print(f">> Finding collectors in collector group '{COLLECTOR_GROUP_ID}'")
     try:
-        GCL_filter = 'collectorGroupName:"' + COLLECTOR_GROUP_NAME + '"'
+        GCL_filter = 'collectorGroupId:"' + str(COLLECTOR_GROUP_ID) + '"'
         GCL_response = api_instance.get_collector_list(
             fields="id,backupAgentId,enableFailBack,enableFailOverOnCollectorDevice",
             filter=GCL_filter)
