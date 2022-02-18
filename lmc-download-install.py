@@ -131,7 +131,7 @@ try:
         installer_bin.close()
     else:
         print("    skip-download was enabled")
-except ApiException as E:
+except ApiException as e:
     print(f"FATAL: Exception when calling LMApi->getCollectorInstaller: {e}")
 
 # Run the installer that was just downloaded
