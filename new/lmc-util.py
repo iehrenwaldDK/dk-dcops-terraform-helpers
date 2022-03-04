@@ -484,8 +484,8 @@ def main():
 
     # Usual arguments which are applicable for the whole script / top-level args
     parser.add_argument('--portal', required=True, type=str, help='LM Portal Name')
-    parser.add_argument('--access-id', required=True, type=str, help='LM API access ID')
-    parser.add_argument('--access-key',  required=True, type=str, help='LM API Access Key')
+    parser.add_argument('--api-id', required=True, type=str, help='LM API ID')
+    parser.add_argument('--api-key',  required=True, type=str, help='LM API Key')
 #    parser.add_argument('--log-file', required=False, type=str, nargs='?',
 #        default='/tmp/lm-collector-install-setup.log', help='Write to this log file')
 #    parser.add_argument('--log-level', required=False, type=str, nargs='?',
@@ -502,8 +502,8 @@ def main():
     parent_parser = argparse.ArgumentParser(add_help=False,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parent_parser.add_argument('--blah', required=False, type=str, help='testy')
 #    parent_parser.add_argument('--portal', required=True, type=str, help='LM Portal Name')
-#    parent_parser.add_argument('--access-id', required=True, type=str, help='LM API access ID')
-#    parent_parser.add_argument('--access-key',  required=True, type=str, help='LM API Access Key')
+#    parent_parser.add_argument('--api-id', required=True, type=str, help='LM API ID')
+#    parent_parser.add_argument('--api-key',  required=True, type=str, help='LM API Key')
 
     # Subparsers that use the parent
     parser_install = subparsers.add_parser('install', parents=[parent_parser],
@@ -545,7 +545,7 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser_echain.add_argument('--collector-id', required=True, type=int,
         help='LM Collector ID')
-    parser_echain.add_argument('--escalation-chain', required=True, type=str,
+    parser_echain.add_argument('--ec-name', required=True, type=str,
         help='Name of Escalation Chain to use if collector is unreachable')
 
     parser_snmp = subparsers.add_parser('snmp', parents=[parent_parser],
@@ -571,7 +571,7 @@ def main():
         help='LM Collector Group ID')
     parser_cgab.add_argument('--cg-name', required=False, type=str,
         help='Collector Group name instead of id, overrides --cg-id')
-    parser_cgab.add_argument('--ab-action', required=True, choices=['enable', 'disable'],
+    parser_cgab.add_argument('--ab-state', required=True, choices=['enable', 'disable'],
         help='Operation to perform')
 
     parser_cgfo = subparsers.add_parser('cgfo', parents=[parent_parser],
@@ -581,7 +581,7 @@ def main():
         help='LM Collector Group ID')
     parser_cgfo.add_argument('--cg-name', required=False, type=str,
         help='Collector Group name instead of id, overrides --cg-id')
-    parser_cgfo.add_argument('--fo-action', required=True, choices=['enable', 'disable'],
+    parser_cgfo.add_argument('--fo-state', required=True, choices=['enable', 'disable'],
         help='Operation to perform')
     parser_cgfo.add_argument('--no-sleep', required=False, action='store_true', default=True,
         help='Do not sleep before executing the failover setup')
@@ -595,8 +595,8 @@ def main():
         print('    Arg %s: %s' % (arg, getattr(args, arg)))
 
     lmsdk_cfg = logicmonitor_sdk.Configuration()
-    lmsdk_cfg.access_id = args.access_id
-    lmsdk_cfg.access_key = args.access_key
+    lmsdk_cfg.api_id = args.api_id
+    lmsdk_cfg.api_key = args.api_key
     lmsdk_cfg.company = args.portal
     lm_api = logicmonitor_sdk.LMApi(logicmonitor_sdk.ApiClient(lmsdk_cfg))
 
@@ -622,7 +622,7 @@ def main():
         set_collector_dev_cp(args.collector_id, snmp_props)
     # Set the collector-down escalation chain on the collector
     elif args.action == 'echain':
-        set_collector_esc_chain(args.collector_id, args.escalation_chain)
+        set_collector_esc_chain(args.collector_id, args.ec_name)
     # Toggle collector group failover
     elif args.action == 'cgfo':
         if not args.cg_id and not args.cg_name:
@@ -638,7 +638,7 @@ def main():
 
         resolved_cgid = name_to_cgid if name_to_cgid else args.cg_id
         if resolved_cgid:
-            set_collector_grp_fo(resolved_cgid, args.fo_action, args.no_sleep)
+            set_collector_grp_fo(resolved_cgid, args.fo_state, args.no_sleep)
         else:
             print('Either collector group ID or name was invalid')
             os._exit(1)
@@ -658,7 +658,7 @@ def main():
 
         resolved_cgid = name_to_cgid if name_to_cgid else args.cg_id
         if resolved_cgid:
-            set_collector_grp_ab(resolved_cgid, args.ab_action, 10000)
+            set_collector_grp_ab(resolved_cgid, args.ab_state, 10000)
         else:
             print('Either collector group ID or name was invalid')
             os._exit(1)
