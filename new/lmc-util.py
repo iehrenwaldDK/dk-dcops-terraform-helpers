@@ -273,13 +273,13 @@ def get_collector_installer(c_id: str, os_arch: str, size: str, use_ea: bool) ->
     return installer.name if is_success else None
 
 # Run installer
-def run_collector_installer(filename: str, size: str) -> bool:
+def run_collector_installer(filename: str) -> bool:
     is_success = False
     print(f'run_collector_installer(): filename={filename} size={size}')
 
     if os.path.exists(filename):
         os.chmod(filename, 0o755)
-        runner = subprocess.run([filename, '-y', '-m', '-s ', size])
+        runner = subprocess.run([filename, '-y', '-m'])
         if runner.returncode == 0:
             print(f'run_collector_installer(): Installer exited successfully')
             is_success = True
