@@ -279,23 +279,12 @@ def run_collector_installer(filename: str, size: str) -> bool:
 
     if os.path.exists(filename):
         os.chmod(filename, 0o755)
-        runner = subprocess.run([filename, '-y', '-m', '-s ', size], capture_output=True)
+        runner = subprocess.run([filename, '-y', '-m', '-s ', size])
         if runner.returncode == 0:
             print(f'run_collector_installer(): Installer exited successfully')
             is_success = True
         else:
             print(f'run_collector_installer(): Installed exited with non-zero code ({runner.returncode})')
-            print('    stdout dump:')
-            print('--start--')
-            for line in runner.stdout.splitlines():
-                print(line)
-            print('--end--')
-
-            print('    stderr dump:')
-            print('--start--')
-            for line in runner.stderr.splitlines():
-                print(line)
-            print('--end--')
     else:
         print(f'run_collector_installer(): Could not locate {filename}')
 
