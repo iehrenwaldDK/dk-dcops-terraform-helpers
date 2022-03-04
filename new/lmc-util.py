@@ -484,8 +484,8 @@ def main():
 
     # Usual arguments which are applicable for the whole script / top-level args
     parser.add_argument('--portal', required=True, type=str, help='LM Portal Name')
-    parser.add_argument('--api-id', required=True, type=str, help='LM API ID')
-    parser.add_argument('--api-key',  required=True, type=str, help='LM API Key')
+    parser.add_argument('--access-id', required=True, type=str, help='LM API ID')
+    parser.add_argument('--access-key',  required=True, type=str, help='LM API Key')
 #    parser.add_argument('--log-file', required=False, type=str, nargs='?',
 #        default='/tmp/lm-collector-install-setup.log', help='Write to this log file')
 #    parser.add_argument('--log-level', required=False, type=str, nargs='?',
@@ -502,8 +502,8 @@ def main():
     parent_parser = argparse.ArgumentParser(add_help=False,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parent_parser.add_argument('--blah', required=False, type=str, help='testy')
 #    parent_parser.add_argument('--portal', required=True, type=str, help='LM Portal Name')
-#    parent_parser.add_argument('--api-id', required=True, type=str, help='LM API ID')
-#    parent_parser.add_argument('--api-key',  required=True, type=str, help='LM API Key')
+#    parent_parser.add_argument('--access-id', required=True, type=str, help='LM API ID')
+#    parent_parser.add_argument('--access-key',  required=True, type=str, help='LM API Key')
 
     # Subparsers that use the parent
     parser_install = subparsers.add_parser('install', parents=[parent_parser],
@@ -571,8 +571,8 @@ def main():
         help='LM Collector Group ID')
     parser_cgab.add_argument('--cg-name', required=False, type=str,
         help='Collector Group name instead of id, overrides --cg-id')
-    parser_cgab.add_argument('--ab-state', required=True, choices=['enable', 'disable'],
-        help='Operation to perform')
+    parser_cgab.add_argument('--ab-state', required=True, type=str, choices=['enable', 'disable'],
+        default='disable', help='Collector group device resource auto balancing')
 
     parser_cgfo = subparsers.add_parser('cgfo', parents=[parent_parser],
         help='Set collector group failover',
@@ -581,8 +581,8 @@ def main():
         help='LM Collector Group ID')
     parser_cgfo.add_argument('--cg-name', required=False, type=str,
         help='Collector Group name instead of id, overrides --cg-id')
-    parser_cgfo.add_argument('--fo-state', required=True, choices=['enable', 'disable'],
-        help='Operation to perform')
+    parser_cgfo.add_argument('--fo-state', required=True, type=str, choices=['enable', 'disable'],
+        default='enable', help='Collector group device resource monitoring failover')
     parser_cgfo.add_argument('--no-sleep', required=False, action='store_true', default=True,
         help='Do not sleep before executing the failover setup')
 
@@ -595,9 +595,9 @@ def main():
         print('    Arg %s: %s' % (arg, getattr(args, arg)))
 
     lmsdk_cfg = logicmonitor_sdk.Configuration()
-    lmsdk_cfg.api_id = args.api_id
-    lmsdk_cfg.api_key = args.api_key
     lmsdk_cfg.company = args.portal
+    lmsdk_cfg.access_id  = args.access_id
+    lmsdk_cfg.access_key = args.access_key
     lm_api = logicmonitor_sdk.LMApi(logicmonitor_sdk.ApiClient(lmsdk_cfg))
 
     # Download and optionally install the collector
