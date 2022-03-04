@@ -273,13 +273,13 @@ def get_collector_installer(c_id: str, os_arch: str, size: str, use_ea: bool) ->
     return installer.name if is_success else None
 
 # Run installer
-def run_collector_installer(filename: str, size: str, user: str = 'logicmonitor', path = '/usr/local/logicmonitor') -> bool:
+def run_collector_installer(filename: str, size: str) -> bool:
     is_success = False
-    print(f'run_collector_installer(): filename={filename} user={user} path={path}')
+    print(f'run_collector_installer(): filename={filename} size={size}')
 
     if os.path.exists(filename):
         os.chmod(filename, 0o755)
-        runner = subprocess.run([filename, '-y', '-m', '-d ', path, '-s ', size, '-d ', path, '-u ', user])
+        runner = subprocess.run([filename, '-y', '-m', '-s ', size])
         if runner.returncode == 0:
             print(f'run_collector_installer(): Installer exited successfully')
             is_success = True
@@ -626,15 +626,17 @@ def main():
         if not args.cg_id and not args.cg_name:
             print('Need to specify either --cg-id or --cg-name, not both')
             os._exit(1)
+
         if args.cg_name:
             gcgbn_response = gcgbn(args.cg_name)
             if gcgbn_response and gcgbn_response.id:
-                name_to_cgid = gcgbn_response.id
+                resolved_cgid = gcgbn_response.id
             else:
                 print(f'Cannot resolve {args.cg_name} to a collector group id')
                 os._exit(1)
+        else:
+            resolved_cgid = args.cg_id
 
-        resolved_cgid = name_to_cgid if name_to_cgid else args.cg_id
         if resolved_cgid:
             set_collector_grp_fo(resolved_cgid, args.fo_state, args.no_sleep)
         else:
@@ -649,12 +651,13 @@ def main():
         if args.cg_name:
             gcgbn_response = gcgbn(args.cg_name)
             if gcgbn_response and gcgbn_response.id:
-                name_to_cgid = gcgbn_response.id
+                resolved_cgid = gcgbn_response.id
             else:
                 print(f'Cannot resolve {args.cg_name} to a collector group id')
                 os._exit(1)
+        else:
+            resolved_cgid = args.cg_id
 
-        resolved_cgid = name_to_cgid if name_to_cgid else args.cg_id
         if resolved_cgid:
             set_collector_grp_ab(resolved_cgid, args.ab_state, 10000)
         else:
