@@ -33,8 +33,8 @@ def gcbi(c_id: int, r_fields: str = '') -> logicmonitor_sdk.models.collector.Col
         print(f'LM API Exception: get_collector_by_id(): {e}')
         response = {}
 
-    if response and response.id == c_id and response.hostname:
-        print(f'gcbi(): Found collector id {c_id} with hostname {response.hostname}')
+    if response and response.id == c_id:
+        print(f'gcbi(): Found collector id {c_id}')
     else:
         print(f'gcbi(): Did not find collector id {c_id}')
 
