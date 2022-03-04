@@ -247,9 +247,7 @@ def get_collector_installer(c_id: str, os_arch: str, size: str, use_ea: bool) ->
     print(f'get_collector_installer(): c_id={c_id} os_arch={os_arch} size={size} use_ea={use_ea}')
 
     gcbi_response = gcbi(c_id)
-    if gcbi_response and gcbi_response.id and gcbi_response.hostname:
-        print(f'get_collector_installer(): Found collector id {c_id} named {gcbi_response.hostname}')
-        
+    if gcbi_response and gcbi_response.id:
         try:
             response = lm_api.get_collector_installer(collector_id=c_id, os_and_arch=os_arch,
                 collector_size=size, use_ea=use_ea)
