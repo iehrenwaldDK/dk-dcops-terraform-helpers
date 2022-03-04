@@ -604,7 +604,7 @@ def main():
         if args.dl_only:
             print(f'Requested download-only, file is at {lmc_bin_name}')
         else:
-            run_collector_installer(lmc_bin_name, args.size)
+            run_collector_installer(lmc_bin_name)
     # Set the collector resource/device name and IP address
     elif args.action == 'devname':
         set_collector_dev_name(args.collector_id, args.display_name, args.ip_address)
