@@ -275,7 +275,7 @@ def get_collector_installer(c_id: str, os_arch: str, size: str, use_ea: bool) ->
 # Run installer
 def run_collector_installer(filename: str) -> bool:
     is_success = False
-    print(f'run_collector_installer(): filename={filename} size={size}')
+    print(f'run_collector_installer(): filename={filename}')
 
     if os.path.exists(filename):
         os.chmod(filename, 0o755)
@@ -331,10 +331,10 @@ def set_collector_dev_name(c_id: int, display_name: str, ipaddr: str = '') -> bo
             updated_data.display_name = collector_dn
 
             if pdbi(gdbi_response.id, updated_data):
-                print('set_collector_dev_name(): Success')
+                print('set_collector_dev_name(): Success c_id={c_id} display_name={collector_dn} ipaddr={collector_ip}')
                 is_success = True
             else:
-                print('set_collector_dev_name(): Failure')
+                print('set_collector_dev_name(): Failure c_id={c_id} display_name={collector_dn} ipaddr={collector_ip}')
         else:
             print('set_collector_dev_name(): Failure in gdbi() response')
     else:
@@ -445,33 +445,29 @@ def set_collector_grp_fo(cg_id: str, fo_state: str, no_sleep: bool) -> bool:
 
     return is_success
 
-# Add a collector device to a resource group
-def set_collector_dev_grp(c_id: int, dg_name: str) -> bool:
+# Add a collector device to a resource group by resource group ID
+def set_collector_dev_grp(c_id: int, dg_id: int) -> bool:
     is_success = False
-    print(f'set_collector_dev_grp(): c_id={c_id} dg_name={dg_name}')
+    print(f'set_collector_dev_grp(): c_id={c_id} dg_id={dg_id}')
 
-    gdgbn_response = gdgbn(dg_name)
-    if gdgbn_response and gdgbn_response.items and gdgbn_response.items[0].full_path == dg_name:
-        gcbi_response = gcbi(c_id)
-        if gcbi_response and gcbi_response.id and gcbi_response.collector_device_id:
-            gdbi_response = gdbi(gcbi_response.collector_device_id)
-            if gdbi_response and gdbi_response.id and gdbi_response.display_name:
-                updated_data = gdbi_response
-                new_hg_set = set((gdbi_response.host_group_ids + ',' + str(gdgbn_response.items[0].id)).split(','))
-                new_hg = ",".join(new_hg_set)
-                updated_data.host_group_ids = new_hg
+    gcbi_response = gcbi(c_id)
+    if gcbi_response and gcbi_response.id and gcbi_response.collector_device_id:
+        gdbi_response = gdbi(gcbi_response.collector_device_id)
+        if gdbi_response and gdbi_response.id and gdbi_response.display_name:
+            updated_data = gdbi_response
+            new_hg_set = set((gdbi_response.host_group_ids + ',' + str(dg_id)).split(','))
+            new_hg = ",".join(new_hg_set)
+            updated_data.host_group_ids = new_hg
 
-                if pdbi(gdbi_response.id, updated_data):
-                    print(f'set_collector_dev_grp(): Success {new_hg_set}')
-                    is_success = True
-                else:
-                    print(f'set_collector_dev_grp(): Failure {new_hg_set}')
+            if pdbi(gdbi_response.id, updated_data):
+                print(f'set_collector_dev_grp(): Success {new_hg_set}')
+                is_success = True
             else:
-                print('set_collector_dev_grp(): Failure in gdbi() response')
+                print(f'set_collector_dev_grp(): Failure {new_hg_set}')
         else:
-            print('set_collector_dev_grp(): Failure in gcbi() response')
+            print('set_collector_dev_grp(): Failure in gdbi() response')
     else:
-        print('set_collector_dev_grp(): Failure in gdgbn() response')
+        print('set_collector_dev_grp(): Failure in gcbi() response')
 
     return is_success
 
@@ -525,8 +521,10 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser_devgrp.add_argument('--collector-id', required=True, type=int,
         help='LM Collector ID')
-    parser_devgrp.add_argument('--device-group', required=True, type=str,
-        help='Path to folder to place collector resource in.  Eg: "/B2C/DCOps/AZDC01/Collectors"')
+    parser_devgrp.add_argument('--dg-id', required=False, type=int,
+        help='Device Group ID')
+    parser_devgrp.add_argument('--dg-name', required=False, type=str,
+        help='Path to folder to place collector resource in.  Eg: "/B2C/DCOps/AZDC01/Collectors".  Overrides --dg-id')
 
     parser_devname = subparsers.add_parser('devname', parents=[parent_parser],
         help='Set collector VM device name',
@@ -643,7 +641,25 @@ def main():
             print('Either collector group ID or name was invalid')
             os._exit(1)
     elif args.action == 'devgrp':
-        set_collector_dev_grp(args.collector_id, args.device_group)
+        if not args.dg_id and not args.dg_name:
+            print('Need to specify either --dg-id or --dg-name, not both')
+            os._exit(1)
+
+        if args.dg_name:
+            gdgbn_response = gdgbn(args.dg_name)
+            if gdgbn_response and gdgbn_response.items and gdgbn_response.items[0].id:
+                resolved_dgid = gdgbn_response.items[0].id
+            else:
+                print(f'Cannot resolve {args.dg_name} to a device group id')
+                os._exit(1)
+        else:
+            resolved_dgid = args.dg_id
+
+        if resolved_dgid:
+            set_collector_dev_grp(args.collector_id, resolved_dgid)
+        else:
+            print('Either device group ID or name was invalid')
+            os._exit(1)
     elif args.action == 'cgab':
         if not args.cg_id and not args.cg_name:
             print('Need to specify either --cg-id or --cg-name, not both')
