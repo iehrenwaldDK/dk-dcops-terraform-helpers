@@ -346,7 +346,7 @@ def set_collector_dev_cp(c_id: int, ncp: list) -> bool:
     logger.info('Setting custom properties for device ID %s', c_id)
 
     gcbi_response = gcbi(c_id, r_fields='id,hostname,collectorDeviceId')
-    if gcbi_response and gcbi_response.id and gcbi_response.collector_device_id != 0:
+    if gcbi_response and gcbi_response.id: # and gcbi_response.collector_device_id != 0:
         gdbi_response = gdbi(d_id=gcbi_response.collector_device_id)
         if gdbi_response and gdbi_response.id:
             updated_data = gdbi_response
@@ -449,7 +449,7 @@ def set_collector_dev_grp(c_id: int, dg_id: int) -> bool:
     logger.info('Adding collector ID %s to device group %s', c_id, dg_id)
 
     gcbi_response = gcbi(c_id)
-    if gcbi_response and gcbi_response.id and gcbi_response.collector_device_id:
+    if gcbi_response and gcbi_response.id: # and gcbi_response.collector_device_id:
         gdbi_response = gdbi(gcbi_response.collector_device_id)
         if gdbi_response and gdbi_response.id and gdbi_response.display_name:
             updated_data = gdbi_response
