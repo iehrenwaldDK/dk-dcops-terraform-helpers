@@ -239,6 +239,30 @@ def pcgbi(cg_id: int, payload: dict) -> bool:
 
     return is_success
 
+# Wait for collector to device association to occur
+def wait_for_collector_assoc(c_id: str, max_try: int = 12, sleep_len: int = 10) -> bool:
+    is_success = False
+    attempt = 1
+
+    gcbi_response = gcbi(c_id)
+    if gcbi_response and gcbi_response.id:
+        while gcbi(c_id).collector_device_id == 0 and attempt <= max_try:
+            logger.warning('  Waiting for collector-to-device association to finish, try again in %s s (attempt %s/%s)', sleep_len, attempt, max_try)
+            attempt += 1
+            sleep(sleep_len)
+
+        gcbi_response = gcbi(c_id)
+        if attempt >= max_try or gcbi_response.collector_device_id == 0:
+            logger.error('  FAILURE: Timeout in waiting for collector resource and device to associate?')
+        elif gcbi_response.collector_device_id:
+            is_success = True
+            gcbi_response = gcbi(c_id)
+            logger.info('  Found association, %s -> %s', c_id, gcbi_response.collector_device_id)
+        else:
+            logger.error('  Unknown state.  attempt=%s max_try=%s gcbi_response=%s', attempt, max_try, gcbi(c_id))
+
+    return is_success
+
 # Download collector installer by ID
 def get_collector_installer(c_id: str, os_arch: str, size: str, use_ea: bool) -> str:
     is_success = False
@@ -345,9 +369,10 @@ def set_collector_dev_cp(c_id: int, ncp: list) -> bool:
     is_success = False
     logger.info('Setting custom properties for device ID %s', c_id)
 
-    gcbi_response = gcbi(c_id, r_fields='id,hostname,collectorDeviceId')
-    if gcbi_response and gcbi_response.id: # and gcbi_response.collector_device_id != 0:
-        gdbi_response = gdbi(d_id=gcbi_response.collector_device_id)
+    if wait_for_collector_assoc(c_id):
+        gcbi_response = gcbi(c_id)
+        gdbi_response = gdbi(gcbi_response.collector_device_id)
+
         if gdbi_response and gdbi_response.id:
             updated_data = gdbi_response
             updated_data.custom_properties = ncp
@@ -360,7 +385,7 @@ def set_collector_dev_cp(c_id: int, ncp: list) -> bool:
         else:
             logger.error('  FAILURE: Error in gdbi() response.  Dump: %s', gdbi_response)
     else:
-        logger.error('  FAILURE: error in gcbi() response.  Dump: %s', gcbi_response)
+        logger.error('  FAILURE: Timed out waiting for collector to device association, or invalid collector id (%s)', c_id)
 
     return is_success
 
@@ -448,9 +473,10 @@ def set_collector_dev_grp(c_id: int, dg_id: int) -> bool:
     is_success = False
     logger.info('Adding collector ID %s to device group %s', c_id, dg_id)
 
-    gcbi_response = gcbi(c_id)
-    if gcbi_response and gcbi_response.id: # and gcbi_response.collector_device_id:
+    if wait_for_collector_assoc(c_id):
+        gcbi_response = gcbi(c_id)
         gdbi_response = gdbi(gcbi_response.collector_device_id)
+
         if gdbi_response and gdbi_response.id and gdbi_response.display_name:
             updated_data = gdbi_response
             new_hg_set = set((gdbi_response.host_group_ids + ',' + str(dg_id)).split(','))
@@ -465,7 +491,7 @@ def set_collector_dev_grp(c_id: int, dg_id: int) -> bool:
         else:
             logger.error('  FAILURE: Error in gdbi() response.  Dump: %s', gdbi_response)
     else:
-        logger.error('  FAILURE: Error in gcbi() response.  Dump: %s', gcbi_response)
+        logger.error('  FAILURE: Timed out waiting for collector to device association, or invalid collector id (%s)', c_id)
 
     return is_success
 
