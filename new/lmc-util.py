@@ -239,6 +239,22 @@ def pcgbi(cg_id: int, payload: dict) -> bool:
 
     return is_success
 
+def run_autodiscovery(d_id: int) -> bool:
+    is_success = False
+    response = {}
+    logger.info('Scheduling auto-discovery for device with ID %s', d_id)
+
+    gdbi_response = gdbi(d_id)
+    if gdbi_response and gdbi_response.id:
+        try:
+            response = lm_api.schedule_auto_discovery_by_device_id(id=d_id)
+        except ApiException as e:
+            logger.error('  LM API Exception: schedule_auto_discovery_by_device_id(): %s', e)
+    else:
+        logger.error('  FAILURE: Error in gdbi() response.  Dump: %s', gdbi_response)
+
+    return is_success
+
 # Wait for collector to device association to occur
 def wait_for_collector_assoc(c_id: str, max_try: int = 12, sleep_len: int = 10) -> bool:
     is_success = False
@@ -379,6 +395,7 @@ def set_collector_dev_cp(c_id: int, ncp: list) -> bool:
 
             if pdbi(gdbi_response.id, updated_data):
                 logger.info('  SUCCESS')
+                run_autodiscovery(gcbi_response.collector_device_id)
                 is_success = True
             else:
                 logger.error('  FAILURE')
@@ -606,6 +623,12 @@ def main():
     parser_cgfo.add_argument('--no-sleep', required=False, action='store_true', default=True,
         help='Do not sleep before executing the failover setup')
 
+    parser_rad = subparsers.add_parser('rad', parents=[parent_parser],
+        help='Run device datasource auto-discovery',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_rad.add_argument('--device-id', required=True, type=int,
+        help='LM Device ID')
+
     args = parser.parse_args()
 
     numeric_loglevel = getattr(logging, args.log_level.upper(), None)
@@ -708,9 +731,15 @@ def main():
         else:
             print('Either collector group ID or name was invalid')
             os._exit(1)
+    elif args.action == 'rad':
+        gdbi_response = gdbi(args.device_id)
+        if gdbi_response and gdbi_response.id:
+            run_autodiscovery(args.device_id)
     else:
         print('Try --help')
 
+    logger.info('Exiting script')
+    logger.info('----------------')
     os._exit(0)
 
 if __name__ == "__main__":
