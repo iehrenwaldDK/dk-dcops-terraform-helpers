@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 import argparse
+import logging
 import os
-import parser
 import socket
 import subprocess
+import time
 from random import randint
 import tempfile
-import time
+from time import sleep
 import logicmonitor_sdk
 from logicmonitor_sdk.rest import ApiException
 
-# Show a message and exit
-def err_and_die(msg: str) -> None:
-    print(msg)
-    os._exit(1)
+logger = logging.getLogger(__name__)
 
 # A hacky way to find the IP address of the NIC used for default route
 def get_dflt_ipaddr(test_addr: str = '8.8.8.8', test_port: int = 80) -> str:
@@ -25,56 +23,56 @@ def get_dflt_ipaddr(test_addr: str = '8.8.8.8', test_port: int = 80) -> str:
 # Get collector by ID
 def gcbi(c_id: int, r_fields: str = '') -> logicmonitor_sdk.models.collector.Collector:
     response = {}
-    print(f'gcbi(): Searching for collector id {c_id}')
+    logger.info('Searching for collector with ID %s', c_id)
 
     try:
         response = lm_api.get_collector_by_id(id=c_id, fields=r_fields)
     except ApiException as e:
-        print(f'LM API Exception: get_collector_by_id(): {e}')
+        logger.error('  LM API Exception: get_collector_by_id(): %s', e)
         response = {}
 
     if response and response.id == c_id:
-        print(f'gcbi(): Found collector id {c_id}')
+        logger.info('  SUCCESS: %s == %s', c_id, response.hostname)
     else:
-        print(f'gcbi(): Did not find collector id {c_id}')
+        logger.error('  FAILED: Could not find %s', c_id)
 
     return response
 
 # Get collector group by ID
 def gcgbi(cg_id: int, r_fields: str = '') -> logicmonitor_sdk.models.collector_group.CollectorGroup:
     response = {}
-    print(f'gcgbi(): Searching for collector group id {cg_id}')
+    logger.info('Searching for collector group with ID %s', cg_id)
 
     try:
         response = lm_api.get_collector_group_by_id(id=cg_id, fields=r_fields)
     except ApiException as e:
-        print(f'LM API Exception: get_collector_group_by_id(): {e}')
+        logger.error('  LM API Exception: get_collector_group_by_id(): %s', e)
         response = {}
 
     if response and response.id == cg_id and response.name:
-        print(f'gcgbi(): Found collector group id {cg_id} with name {response.name}')
+        logger.info('  SUCCESS: %s == %s', cg_id, response.name)
     else:
-        print(f'gcgbi(): Did not find collector group id {cg_id}')
+        logger.error('  FAILED: Could not find %s', cg_id)
 
     return response
 
 # Get collector group by name
 def gcgbn(cg_name: str, r_fields: str = '') -> logicmonitor_sdk.models.collector_group.CollectorGroup:
     response = {}
-    print(f'gcgbn(): Searching for collector group name {cg_name}')
+    logger.info('Searching for collector group named %s', cg_name)
 
     try:
         r_filter   = 'name:"' + cg_name + '"'
         response = lm_api.get_collector_group_list(filter=r_filter, fields=r_fields)
     except ApiException as e:
-        print(f'LM API Exception: get_collector_group_list(): {e}')
+        logger.error('  LM API Exception: get_collector_group_list(): %s', e)
         response = {}
 
     if response and response.total == 1 and response.items and response.items[0].name == cg_name:
-        print(f'gcgbn(): Found collector group with name {cg_name} and id {response.items[0].id}')
+        logger.info('  SUCCESS: %s == %s', cg_name, response.items[0].id)
         response = gcgbi(cg_id=response.items[0].id)
     else:
-        print(f'gcgbn(): Did not find collector group with name {cg_name}')
+        logger.error('  FAILURE: Could not find %s', cg_name)
         response = {}
 
     return response
@@ -82,23 +80,22 @@ def gcgbn(cg_name: str, r_fields: str = '') -> logicmonitor_sdk.models.collector
 # Get collectors in collector group by collector group ID
 def gcicg(cg_id: int, r_fields: str = '', r_filter: str = '') -> logicmonitor_sdk.models.collector_pagination_response.CollectorPaginationResponse:
     response = {}
-    print(f'gcicg(): Searching for collectors in collector group id {cg_id}')
+    logger.info('Searching for collectors in collector group with ID %s', cg_id)
 
     try:
         r_fields = 'id,backupAgentId,enableFailBack,enableFailOverOnCollectorDevice,description'
         r_filter = 'collectorGroupId:"' + str(cg_id) + '"'
         response = lm_api.get_collector_list(fields=r_fields, filter=r_filter)
     except ApiException as e:
-        print(f'LM API Exception: get_collector_list(): {e}')
+        logger.error('  LM API Exception: get_collector_list(): %s', e)
         response = {}
 
     if response and response.total >= 1:
-        print(f'gcicg(): Found collectors in collector group id {cg_id}: ', end='')
+        logger.info('  SUCCESS: Found collectors in group with ID "%s": ', cg_id)
         for i in response.items:
-            print(f'{i.id} ', end='')
-        print('')
+            logger.info('    %s', i.id)
     else:
-        print(f'gcicg(): Did not find any collectors in colletor group id {cg_id}')
+        logger.error('  FAILURE: Could not find collectors in group with ID %s', cg_id)
         response = {}
 
     return response
@@ -106,37 +103,37 @@ def gcicg(cg_id: int, r_fields: str = '', r_filter: str = '') -> logicmonitor_sd
 # Get device/resource by ID
 def gdbi(d_id: int, r_fields: str = '') -> logicmonitor_sdk.models.device.Device:
     response = {}
-    print(f'gdbi(): Searching for device with id {d_id}')
+    logger.info('Searching for device with ID %s', d_id)
 
     try:
         response = lm_api.get_device_by_id(id=d_id, fields=r_fields)
     except ApiException as e:
-        print(f'LM API Exception: get_device_by_id(): {e}')
+        logger.error('  LM API Exception: get_device_by_id(): %s', e)
         response = {}
 
     if response and response.id == d_id and response.display_name:
-        print(f'gdbi(): Found device with id {response.id} named {response.display_name}')
+        logger.info('  SUCCESS: %s == %s', response.id, response.display_name)
     else:
-        print(f'gdbi(): Did not find device with id {d_id}')
+        logger.error('  FAILURE: Could not find device with ID %s', d_id)
 
     return response
 
 # Get device group by name
 def gdgbn(dg_name: str, r_fields: str = '') -> logicmonitor_sdk.models.device_group_pagination_response.DeviceGroupPaginationResponse:
     response = {}
-    print(f'gdgbn(): Searching for device group with name {dg_name}')
+    logger.info('Searching for device group named %s', dg_name)
 
     try:
         r_filter = 'fullPath:"' + dg_name + '"'
         response = lm_api.get_device_group_list(filter=r_filter, fields=r_fields, size=1)
     except ApiException as e:
-        print(f'LM API Exception: get_device_group_list(): {e}')
+        logger.error('  LM API Exception: get_device_group_list(): %s', e)
         response = {}
 
     if response and response.total == 1 and response.items and response.items[0].full_path == dg_name:
-        print(f'gdgbn(): Found device group with name {dg_name} and id {response.items[0].id}')
+        logger.info('  SUCCESS: %s == %s', dg_name, response.items[0].id)
     else:
-        print(f'gdgbn(): Did not find device group with name {dg_name}')
+        logger.error('  FAILURE: Could not find device group named %s', dg_name)
         response = {}
 
     return response
@@ -144,19 +141,19 @@ def gdgbn(dg_name: str, r_fields: str = '') -> logicmonitor_sdk.models.device_gr
 # Get escalation chain by name
 def gecbn(ec_name: str, r_fields: str = '') -> logicmonitor_sdk.models.escalation_chain_pagination_response.EscalationChainPaginationResponse:
     response = {}
-    print(f'gecbn(): Searching for escalation chain with name {ec_name}')
+    logger.info('Searching for escalation chain named %s', ec_name)
 
     try:
         r_filter = 'name:"' + ec_name + '"'
         response = lm_api.get_escalation_chain_list(filter=r_filter, fields=r_fields)
     except ApiException as e:
-        print(f'LM API Exception: get_escalation_chain_list(): {e}')
+        logger.error('  LM API Exception: get_escalation_chain_list(): %s', e)
         response = {}
 
     if response and response.total == 1 and response.items and response.items[0].name == ec_name:
-        print(f'gecbn(): Found escalation chain with name {ec_name} and id {response.items[0].id}')
+        logger.info('  SUCCESS: %s == %s', ec_name, response.items[0].id)
     else:
-        print(f'gecbn(): Did not find escalation chain with name {ec_name}')
+        logger.error('  FAILURE: Could not find escalation chain named %s', ec_name)
         response = {}
 
     return response
@@ -177,22 +174,22 @@ def gecbn(ec_name: str, r_fields: str = '') -> logicmonitor_sdk.models.escalatio
 def pdbi(d_id: int, payload: dict, patch_type: str = 'replace') -> bool:
     is_success = False
     response = {}
-    print(f'pdbi(): Patching device id {d_id} with method {patch_type}')
+    logger.info('Patching device with ID %s via method %s', d_id, patch_type)
 
     gdbi_response = gdbi(d_id)
     if gdbi_response.id:
         try:
             response = lm_api.patch_device(id=d_id, body=payload, op_type=patch_type)
         except ApiException as e:
-            print(f'LM API Exception: patch_device(): {e}')
+            logger.error('  LM API Exception: patch_device(): %s', e)
     else:
-        print('pbdi(): Failure in gdbi() response')
+        logger.error('  FAILURE: Error in gdbi() response')
 
     if response and response.id:
-        print(f'pdbi(): Successfully patched device id {d_id} with new data')
+        logger.info('  SUCCESS: Patched device ID %s with new data', d_id)
         is_success = True
     else:
-        print(f'pdbi(): Failed to patch device id {d_id} with new data')
+        logger.error('  FAILURE: Could not patch device ID %s', d_id)
 
     return is_success
 
@@ -201,20 +198,21 @@ def pcbi(c_id: int, payload: dict) -> bool:
     is_success = False
     response = {}
 
+    logger.info('Patching collector with ID %s', c_id)
     gcbi_response = gcbi(c_id)
     if gcbi_response.id:
         try:
             response = lm_api.patch_collector_by_id(id=c_id, body=payload)
         except ApiException as e:
-            print(f'LM API Exception: patch_collector_by_id(): {e}')
+            logger.error('  LM API Exception: patch_collector_by_id(): %s', e)
     else:
-        print('pcbi(): Failure in gcbi() response')
+        logger.error('  FAILURE: Error in gcbi() response')
 
     if response and response.id:
-        print(f'pcbi(): Successfully patched collector id {c_id} with new data')
+        logger.info('  SUCCESS: Patched collector ID %s with new data', c_id)
         is_success = True
     else:
-        print(f'pcbi(): Failed to patch collector id {c_id} with new data')
+        logger.error('  FAILURE: Could not patch collector ID %s', c_id)
 
     return is_success
 
@@ -222,29 +220,29 @@ def pcbi(c_id: int, payload: dict) -> bool:
 def pcgbi(cg_id: int, payload: dict) -> bool:
     is_success = False
     response = {}
-    print(f'pcgbi(): Patching collector group id {cg_id}')
+    logger.info('Patching collector group with ID %s', cg_id)
 
     gcgbi_response = gcgbi(cg_id)
     if gcgbi_response.id:
         try:
             response = lm_api.patch_collector_group_by_id(id=cg_id, body=payload)
         except ApiException as e:
-            print(f'LM API Exception: patch_collector_group_by_id(): {e}')
+            logger.error('  LM API Exception: patch_collector_group_by_id(): %s', e)
     else:
-        print('pcgbi(): Failure in gcgbi() response')
+        logger.error('  FAILURE: Error in gcgbi() response')
 
     if response and response.id:
-        print(f'pcgbi(): Successfully patched collector group {cg_id} with new data')
+        logger.info('  SUCCESS: Patched collector group id %s with new data', cg_id)
         is_success = True
     else:
-        print(f'pcgbi(): Failed to patch collector group {cg_id} with new data')
+        logger.error('  FAILURE: Could not patch collector group ID %s', cg_id)
 
     return is_success
 
 # Download collector installer by ID
 def get_collector_installer(c_id: str, os_arch: str, size: str, use_ea: bool) -> str:
     is_success = False
-    print(f'get_collector_installer(): c_id={c_id} os_arch={os_arch} size={size} use_ea={use_ea}')
+    logger.info('Downloading collector installer with ID %s', c_id)
 
     gcbi_response = gcbi(c_id)
     if gcbi_response and gcbi_response.id:
@@ -252,73 +250,73 @@ def get_collector_installer(c_id: str, os_arch: str, size: str, use_ea: bool) ->
             response = lm_api.get_collector_installer(collector_id=c_id, os_and_arch=os_arch,
                 collector_size=size, use_ea=use_ea)
         except ApiException as e:
-            print(f'LM API Exception: get_collector_installer(): {e}')
+            logger.error('  LM API Exception: get_collector_installer(): %s', e)
             response = {}
 
         if response and response.status == 200:
-            print('get_collector_installer(): Downloading installer')
+            logger.info('  Beginning download')
             dl_start_time = time.time()
             with tempfile.NamedTemporaryFile(delete=False) as installer:
                 installer.write(response.data)
                 installer.flush()
                 installer.close()
             dl_time = round((time.time() - dl_start_time), 2)
-            print(f'get_collector_installer(): Finished in {dl_time} seconds')
+            logger.info('  SUCCESS: Downloaded collector installer in %s seconds', dl_time)
             is_success = True
         else:
-            print(f'get_collector_installer(): Failure in response ({response.status})')
+            logger.error('  FAILURE: Remote end sent non-OK response code (%s)', response.status)
     else:
-        print('get_collector_installer(): Failure in gcbi() response')
+        logger.info('  FAILURE: Error in gcbi() response')
 
     return installer.name if is_success else None
 
 # Run installer
 def run_collector_installer(filename: str) -> bool:
     is_success = False
-    print(f'run_collector_installer(): filename={filename}')
+    logger.info('Running collector installer from %s', filename)
 
     if os.path.exists(filename):
         os.chmod(filename, 0o755)
         runner = subprocess.run([filename, '-y', '-m'])
         if runner.returncode == 0:
-            print(f'run_collector_installer(): Installer exited successfully')
+            logger.info('  SUCCESS: Installer exited successfully')
             is_success = True
         else:
-            print(f'run_collector_installer(): Installed exited with non-zero code ({runner.returncode})')
+            logger.error('  FAILURE: Installer exited with non-zero return code (%s)', runner.returncode)
     else:
-        print(f'run_collector_installer(): Could not locate {filename}')
+        logger.error('  FAILURE: Could not access %s', filename)
 
     return is_success
 
 # Set collector escalation chain
 def set_collector_esc_chain(c_id: int, ec_name: str) -> bool:
     is_success = False
-    print(f'set_collector_esc_chain(): c_id={c_id} ec_name={ec_name}')
+    logger.info('Setting escalation chain on collector ID %s to %s', c_id, ec_name)
 
     gcbi_response = gcbi(c_id)
     if gcbi_response:
         gecbn_response = gecbn(ec_name)
     else:
-        print('set_collector_esc_chain(): Failure in gcbi() response')
+        logger.error('  FAILURE: Error in gcbi() response')
 
     if gcbi_response and gcbi_response.id and gecbn_response and gecbn_response.total == 1:
         updated_data = gcbi_response
         updated_data.escalating_chain_id = gecbn_response.items[0].id
 
         if pcbi(c_id, updated_data):
-            print('set_collector_esc_chain(): Success')
+            logger.info('  SUCCESS')
             is_success = True
         else:
-            print('set_collector_esc_chain(): Failure')
+            logger.error('  FAILURE')
     else:
-        print('set_collector_esc_chain(): Failure in gcbi() or gecbn() response')
+        logger.error('  FAILURE: Error in gcbi() or gecbn() response')
 
     return is_success
 
 # Set collector device name
 def set_collector_dev_name(c_id: int, display_name: str, ipaddr: str = '') -> bool:
     is_success = False
-    print(f'set_collector_dev_name(): c_id={c_id} display_name={display_name} ipaddr={ipaddr}')
+    logger.info('Setting device name on collector ID %s', c_id)
 
     gcbi_response = gcbi(c_id)
     if gcbi_response and gcbi_response.id and gcbi_response.collector_device_id:
@@ -331,21 +329,21 @@ def set_collector_dev_name(c_id: int, display_name: str, ipaddr: str = '') -> bo
             updated_data.display_name = collector_dn
 
             if pdbi(gdbi_response.id, updated_data):
-                print('set_collector_dev_name(): Success c_id={c_id} display_name={collector_dn} ipaddr={collector_ip}')
+                logger.info('  SUCCESS: Set display name to %s and IP address to %s', collector_dn, collector_ip)
                 is_success = True
             else:
-                print('set_collector_dev_name(): Failure c_id={c_id} display_name={collector_dn} ipaddr={collector_ip}')
+                logger.error('  FAILURE: Could not set display name and/or IP address')
         else:
-            print('set_collector_dev_name(): Failure in gdbi() response')
+            logger.error('  FAILURE: Error in gdbi() response')
     else:
-        print('set_collector_dev_name(): Failure in gcbi() response')
+        logger.error('  FAILURE: Error in gcbi() response')
 
     return is_success
 
 # Set custom properties of a collector device resource, mostly used for SNMPv3
 def set_collector_dev_cp(c_id: int, ncp: list) -> bool:
     is_success = False
-    print(f'set_collector_dev_cp(): c_id={c_id} ncp={ncp}')
+    logger.info('Setting custom properties for device ID %s', c_id)
 
     gcbi_response = gcbi(c_id, r_fields='id,hostname,collectorDeviceId')
     if gcbi_response and gcbi_response.id and gcbi_response.collector_device_id != 0:
@@ -355,21 +353,21 @@ def set_collector_dev_cp(c_id: int, ncp: list) -> bool:
             updated_data.custom_properties = ncp
 
             if pdbi(gdbi_response.id, updated_data):
-                print('set_collector_dev_cp(): Success')
+                logger.info('  SUCCESS')
                 is_success = True
             else:
-                print('set_collector_dev_cp(): Failure')
+                logger.error('  FAILURE')
         else:
-            print('set_collector_dev_cp(): Failure in gdbi() response')
+            logger.error('  FAILURE: Error in gdbi() response')
     else:
-        print('set_collector_dev_cp(): Failure in gcbi() response')
+        logger.error('  FAILURE: error in gcbi() response')
 
     return is_success
 
 # Set collector group auto-balance
 def set_collector_grp_ab(cg_id: int, ab_state: str, ab_threshold: int = '10000') -> bool:
     is_success = False
-    print(f'set_collector_grp_ab(): cg_id={cg_id} ab_state={ab_state} ab_threshold={ab_threshold}')
+    logger.info('Setting auto-balance to %s on collector group ID %s', ab_state, cg_id)
 
     gcgbi_response = gcgbi(cg_id)
     if gcgbi_response and gcgbi_response.id == cg_id:
@@ -380,12 +378,12 @@ def set_collector_grp_ab(cg_id: int, ab_state: str, ab_threshold: int = '10000')
         updated_data.auto_balance_instance_count_threshold = ab_threshold
 
         if pcgbi(cg_id, updated_data):
-            print('set_collector_grp_ab(): Success')
+            logger.info('  SUCCESS')
             is_success = True
         else:
-            print('set_collector_grp_ab(): Failure')
+            logger.error('  FAILURE')
     else:
-        print('set_collector_grp_ab(): Failure in gcgbi() response')
+        logger.error('  FAILURe: Error in gcgbi() response')
 
     return is_success
 
@@ -393,7 +391,7 @@ def set_collector_grp_ab(cg_id: int, ab_state: str, ab_threshold: int = '10000')
 def set_collector_grp_fo(cg_id: str, fo_state: str, no_sleep: bool) -> bool:
     is_success = False
     tripped = False
-    print(f'set_collector_grp_fo(): cg_id={cg_id} fo_state={fo_state} no_sleep={no_sleep}')
+    logger.info('Setting failover to %s on collector group ID %s', fo_state, cg_id)
 
     # Why are we sleeping a random time?  So we give all collectors a chance
     #  to download/install/configure/verify.  It's safe for this to run on
@@ -402,7 +400,7 @@ def set_collector_grp_fo(cg_id: str, fo_state: str, no_sleep: bool) -> bool:
         sleep_min = 120
         sleep_max = 300
         sleep_time = randint(sleep_min, sleep_max)
-        print(f'set_collector_group_failover(): Sleeping {sleep_time}s')
+        logger.info('  Sleeping %s seconds to allow all collectors to come up', sleep_time)
         sleep(sleep_time)
 
     gcgbi_response = gcgbi(cg_id)
@@ -410,7 +408,7 @@ def set_collector_grp_fo(cg_id: str, fo_state: str, no_sleep: bool) -> bool:
         gcicg_response = gcicg(cg_id)
         if gcicg_response and gcicg_response.items:
             if gcicg_response.total < 2:
-                print(f'set_collector_grp_fo(): Not enough collectors to enable failover ({gcicg_response.total})')
+                logger.error('  FAILURE: Not enough collectors to enable failover (%s)', gcicg_response.total)
             else:
                 backup_index = 0
                 updated_data = gcicg_response.items
@@ -431,24 +429,24 @@ def set_collector_grp_fo(cg_id: str, fo_state: str, no_sleep: bool) -> bool:
                         updated_data[index].enable_fail_over_on_collector_device = False
 
                     if pcbi(gcicg_response.items[index].id, updated_data[index]):
-                        print(f'set_collector_grp_fo(): Success {updated_data[index].id} -> {updated_data[index].backup_agent_id}')
+                        logger.info('  SUCCESS: %s -> %s', updated_data[index].id, updated_data[index].backup_agent_id)
                     else:
-                        print(f'set_collector_grp_fo(): Failure {updated_data[index].id} -> {updated_data[index].backup_agent_id}')
+                        logger.info('  FAILURE: %s -> %s', updated_data[index].id, updated_data[index].backup_agent_id)
                         tripped = True
 
                 if not tripped:
                     is_success = True
         else:
-            print('set_collector_grp_fo(): Failure in gcicg() response')
+            logger.error('  FAILURE: Error in gcicg() response')
     else:
-        print('set_collector_grp_fo(): Failure in gcgbi() response')
+        logger.error('FAILURE: Error in gcgbi() response')
 
     return is_success
 
 # Add a collector device to a resource group by resource group ID
 def set_collector_dev_grp(c_id: int, dg_id: int) -> bool:
     is_success = False
-    print(f'set_collector_dev_grp(): c_id={c_id} dg_id={dg_id}')
+    logger.info('Adding collector ID %s to device group %s', c_id, dg_id)
 
     gcbi_response = gcbi(c_id)
     if gcbi_response and gcbi_response.id and gcbi_response.collector_device_id:
@@ -460,14 +458,14 @@ def set_collector_dev_grp(c_id: int, dg_id: int) -> bool:
             updated_data.host_group_ids = new_hg
 
             if pdbi(gdbi_response.id, updated_data):
-                print(f'set_collector_dev_grp(): Success {new_hg_set}')
+                logger.info('  SUCCESS: %s', new_hg_set)
                 is_success = True
             else:
-                print(f'set_collector_dev_grp(): Failure {new_hg_set}')
+                logger.info('  FAILURE: %s', new_hg_set)
         else:
-            print('set_collector_dev_grp(): Failure in gdbi() response')
+            logger.error('  FAILURE: Error in gdbi() response')
     else:
-        print('set_collector_dev_grp(): Failure in gcbi() response')
+        logger.error('  FAILURE: Error in gcbi() response')
 
     return is_success
 
@@ -480,11 +478,11 @@ def main():
     parser.add_argument('--portal', required=True, type=str, help='LM Portal Name')
     parser.add_argument('--access-id', required=True, type=str, help='LM API ID')
     parser.add_argument('--access-key',  required=True, type=str, help='LM API Key')
-#    parser.add_argument('--log-file', required=False, type=str, nargs='?',
-#        default='/tmp/lm-collector-install-setup.log', help='Write to this log file')
-#    parser.add_argument('--log-level', required=False, type=str, nargs='?',
-#        choices=['DEBUG','INFO','WARNING','ERROR','CRITICAL'], default='INFO',
-#        help='Log level, default is INFO')
+    parser.add_argument('--log-file', required=False, type=str, nargs='?',
+        default='/tmp/lm-collector-install-setup.log', help='Write to this log file')
+    parser.add_argument('--log-level', required=False, type=str, nargs='?',
+        choices=['DEBUG','INFO','WARNING','ERROR','CRITICAL'], default='INFO',
+        help='Log level, default is INFO')
 
     # Same subparsers as usual
     subparsers = parser.add_subparsers(help='Desired action to perform', dest='action')
@@ -583,12 +581,17 @@ def main():
         help='Do not sleep before executing the failover setup')
 
     args = parser.parse_args()
-#    numeric_loglevel = getattr(logging, args.log_level.upper(), None)    
-    print('----------------')
-    print('Starting script')
+
+    numeric_loglevel = getattr(logging, args.log_level.upper(), None)
+    if not isinstance(numeric_loglevel, int):
+        raise ValueError('Invalid log level: %s' % args.loglevel)
+    log_format = "[%(asctime)s %(filename)s:%(lineno)s - %(levelname)s - %(funcName)20s()] %(message)s"
+    logging.basicConfig(filename=args.log_file, filemode='a', format=log_format, level=numeric_loglevel)
+
+    logger.info('----------------')
+    logger.info('Starting script')
     for arg in vars(args):
-#        logger.debug('Arg %s: %s', arg, getattr(args, arg))
-        print('    Arg %s: %s' % (arg, getattr(args, arg)))
+        logger.debug('Arg %s: %s', arg, getattr(args, arg))
 
     lmsdk_cfg = logicmonitor_sdk.Configuration()
     lmsdk_cfg.company = args.portal
@@ -600,7 +603,7 @@ def main():
     if args.action == 'install':
         lmc_bin_name = get_collector_installer(args.collector_id, args.os_arch, args.size, args.use_ea)
         if args.dl_only:
-            print(f'Requested download-only, file is at {lmc_bin_name}')
+            logger.info('  Requested download-only, file is at %s', lmc_bin_name)
         else:
             run_collector_installer(lmc_bin_name)
     # Set the collector resource/device name and IP address
@@ -686,4 +689,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
