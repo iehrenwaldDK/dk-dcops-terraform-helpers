@@ -183,13 +183,13 @@ def pdbi(d_id: int, payload: dict, patch_type: str = 'replace') -> bool:
         except ApiException as e:
             logger.error('  LM API Exception: patch_device(): %s', e)
     else:
-        logger.error('  FAILURE: Error in gdbi() response')
+        logger.error('  FAILURE: Error in gdbi() response.  Dump: %s', gdbi_response)
 
     if response and response.id:
         logger.info('  SUCCESS: Patched device ID %s with new data', d_id)
         is_success = True
     else:
-        logger.error('  FAILURE: Could not patch device ID %s', d_id)
+        logger.error('  FAILURE: Could not patch device ID %s.  Dump: %s', d_id, response)
 
     return is_success
 
@@ -206,13 +206,13 @@ def pcbi(c_id: int, payload: dict) -> bool:
         except ApiException as e:
             logger.error('  LM API Exception: patch_collector_by_id(): %s', e)
     else:
-        logger.error('  FAILURE: Error in gcbi() response')
+        logger.error('  FAILURE: Error in gcbi() response.  Dump: %s', gcbi_response)
 
     if response and response.id:
         logger.info('  SUCCESS: Patched collector ID %s with new data', c_id)
         is_success = True
     else:
-        logger.error('  FAILURE: Could not patch collector ID %s', c_id)
+        logger.error('  FAILURE: Could not patch collector ID %s.  Dump: %s', c_id, response)
 
     return is_success
 
@@ -229,13 +229,13 @@ def pcgbi(cg_id: int, payload: dict) -> bool:
         except ApiException as e:
             logger.error('  LM API Exception: patch_collector_group_by_id(): %s', e)
     else:
-        logger.error('  FAILURE: Error in gcgbi() response')
+        logger.error('  FAILURE: Error in gcgbi() response.  Dump: %s', gcgbi_response)
 
     if response and response.id:
         logger.info('  SUCCESS: Patched collector group id %s with new data', cg_id)
         is_success = True
     else:
-        logger.error('  FAILURE: Could not patch collector group ID %s', cg_id)
+        logger.error('  FAILURE: Could not patch collector group ID %s.  Dump: %s', cg_id, response)
 
     return is_success
 
@@ -266,7 +266,7 @@ def get_collector_installer(c_id: str, os_arch: str, size: str, use_ea: bool) ->
         else:
             logger.error('  FAILURE: Remote end sent non-OK response code (%s)', response.status)
     else:
-        logger.info('  FAILURE: Error in gcbi() response')
+        logger.info('  FAILURE: Error in gcbi() response.  Dump: %s', gcbi_response)
 
     return installer.name if is_success else None
 
@@ -297,7 +297,7 @@ def set_collector_esc_chain(c_id: int, ec_name: str) -> bool:
     if gcbi_response:
         gecbn_response = gecbn(ec_name)
     else:
-        logger.error('  FAILURE: Error in gcbi() response')
+        logger.error('  FAILURE: Error in gcbi() response.  Dump: %s', gcbi_response)
 
     if gcbi_response and gcbi_response.id and gecbn_response and gecbn_response.total == 1:
         updated_data = gcbi_response
@@ -309,7 +309,7 @@ def set_collector_esc_chain(c_id: int, ec_name: str) -> bool:
         else:
             logger.error('  FAILURE')
     else:
-        logger.error('  FAILURE: Error in gcbi() or gecbn() response')
+        logger.error('  FAILURE: Error in gcbi() or gecbn() response.  Dumps: %s, %s', gcbi_response, gecbn_response)
 
     return is_success
 
@@ -334,9 +334,9 @@ def set_collector_dev_name(c_id: int, display_name: str, ipaddr: str = '') -> bo
             else:
                 logger.error('  FAILURE: Could not set display name and/or IP address')
         else:
-            logger.error('  FAILURE: Error in gdbi() response')
+            logger.error('  FAILURE: Error in gdbi() response.  Dump: %s', gdbi_response)
     else:
-        logger.error('  FAILURE: Error in gcbi() response')
+        logger.error('  FAILURE: Error in gcbi() response.  Dump: %s', gcbi_response)
 
     return is_success
 
@@ -358,9 +358,9 @@ def set_collector_dev_cp(c_id: int, ncp: list) -> bool:
             else:
                 logger.error('  FAILURE')
         else:
-            logger.error('  FAILURE: Error in gdbi() response')
+            logger.error('  FAILURE: Error in gdbi() response.  Dump: %s', gdbi_response)
     else:
-        logger.error('  FAILURE: error in gcbi() response')
+        logger.error('  FAILURE: error in gcbi() response.  Dump: %s', gcbi_response)
 
     return is_success
 
@@ -383,7 +383,7 @@ def set_collector_grp_ab(cg_id: int, ab_state: str, ab_threshold: int = '10000')
         else:
             logger.error('  FAILURE')
     else:
-        logger.error('  FAILURe: Error in gcgbi() response')
+        logger.error('  FAILURe: Error in gcgbi() response.  Dump: %s', gcgbi_response)
 
     return is_success
 
@@ -437,9 +437,9 @@ def set_collector_grp_fo(cg_id: str, fo_state: str, no_sleep: bool) -> bool:
                 if not tripped:
                     is_success = True
         else:
-            logger.error('  FAILURE: Error in gcicg() response')
+            logger.error('  FAILURE: Error in gcicg() response.  Dump: %s', gcicg_response)
     else:
-        logger.error('FAILURE: Error in gcgbi() response')
+        logger.error('FAILURE: Error in gcgbi() response.  Dump: %s', gcgbi_response)
 
     return is_success
 
@@ -463,9 +463,9 @@ def set_collector_dev_grp(c_id: int, dg_id: int) -> bool:
             else:
                 logger.info('  FAILURE: %s', new_hg_set)
         else:
-            logger.error('  FAILURE: Error in gdbi() response')
+            logger.error('  FAILURE: Error in gdbi() response.  Dump: %s', gdbi_response)
     else:
-        logger.error('  FAILURE: Error in gcbi() response')
+        logger.error('  FAILURE: Error in gcbi() response.  Dump: %s', gcbi_response)
 
     return is_success
 
