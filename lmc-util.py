@@ -13,15 +13,21 @@ from logicmonitor_sdk.rest import ApiException
 
 logger = logging.getLogger(__name__)
 
-# A hacky way to find the IP address of the NIC used for default route
 def get_dflt_ipaddr(test_addr: str = '8.8.8.8', test_port: int = 80) -> str:
+    """Return the IP address of the NIC used for default route traffic """
     my_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     my_sock.connect((test_addr, test_port)) # connect() wants a pair
 
     return my_sock.getsockname()[0]
 
-# Get collector by ID
 def gcbi(c_id: int, r_fields: str = '') -> logicmonitor_sdk.models.collector.Collector:
+    """
+    Return a dictionary containing information about a LogicMonitor collector.
+
+        c_id     : LogicMonitor collector ID to retrieve information about.
+        r_fields : String containing comma separated values of dictionary key names to include
+                   in the returned dictionary.  By default it will return all keys/values.
+    """
     response = {}
     logger.info('Searching for collector with ID %s', c_id)
 
@@ -38,8 +44,15 @@ def gcbi(c_id: int, r_fields: str = '') -> logicmonitor_sdk.models.collector.Col
 
     return response
 
-# Get collector group by ID
 def gcgbi(cg_id: int, r_fields: str = '') -> logicmonitor_sdk.models.collector_group.CollectorGroup:
+    """
+    Return a dictionary containing information about a LogicMonitor collector group, searching by
+    collector group ID.
+
+        cg_id    : LogicMonitor collector group ID to retrieve information about.
+        r_fields : String containing comma separated values of dictionary key names to include
+                   in the returned dictionary.  By default it will return all keys/values.
+    """
     response = {}
     logger.info('Searching for collector group with ID %s', cg_id)
 
@@ -56,8 +69,15 @@ def gcgbi(cg_id: int, r_fields: str = '') -> logicmonitor_sdk.models.collector_g
 
     return response
 
-# Get collector group by name
 def gcgbn(cg_name: str, r_fields: str = '') -> logicmonitor_sdk.models.collector_group.CollectorGroup:
+    """
+    Return a dictionary containing information about a LogicMonitor collector group, searching by
+    collector group name.
+
+        cg_name  : LogicMonitor collector group name to retrieve information about.
+        r_fields : String containing comma separated values of dictionary key names to include
+                   in the returned dictionary.  By default it will return all keys/values.
+    """
     response = {}
     logger.info('Searching for collector group named %s', cg_name)
 
@@ -77,8 +97,15 @@ def gcgbn(cg_name: str, r_fields: str = '') -> logicmonitor_sdk.models.collector
 
     return response
 
-# Get collectors in collector group by collector group ID
-def gcicg(cg_id: int, r_fields: str = '', r_filter: str = '') -> logicmonitor_sdk.models.collector_pagination_response.CollectorPaginationResponse:
+def gcicg(cg_id: int, r_fields: str = '') -> logicmonitor_sdk.models.collector_pagination_response.CollectorPaginationResponse:
+    """
+    Return a list of dictionaries containing information about LogicMonitor collectors which
+    belong in a specific collector group.
+
+        cg_id    : LogicMonitor collector group ID to retrieve information about.
+        r_fields : String containing comma separated values of dictionary key names to include
+                   in the returned dictionary.  By default it will return all keys/values.
+    """
     response = {}
     logger.info('Searching for collectors in collector group with ID %s', cg_id)
 
@@ -100,8 +127,14 @@ def gcicg(cg_id: int, r_fields: str = '', r_filter: str = '') -> logicmonitor_sd
 
     return response
 
-# Get device/resource by ID
 def gdbi(d_id: int, r_fields: str = '') -> logicmonitor_sdk.models.device.Device:
+    """
+    Return a dictionary containing information about a LogicMonitor device/resource.
+
+        d_id     : LogicMonitor device ID to retrieve information about.
+        r_fields : String containing comma separated values of dictionary key names to include
+                   in the returned dictionary.  By default it will return all keys/values.
+    """
     response = {}
     logger.info('Searching for device with ID %s', d_id)
 
@@ -118,8 +151,15 @@ def gdbi(d_id: int, r_fields: str = '') -> logicmonitor_sdk.models.device.Device
 
     return response
 
-# Get device group by name
 def gdgbn(dg_name: str, r_fields: str = '') -> logicmonitor_sdk.models.device_group_pagination_response.DeviceGroupPaginationResponse:
+    """
+    Return a dictionary containing information about a LogicMonitor device group, searching by
+    device group name.
+
+        dg_name  : LogicMonitor device group name to retrieve information about.
+        r_fields : String containing comma separated values of dictionary key names to include
+                   in the returned dictionary.  By default it will return all keys/values.
+    """
     response = {}
     logger.info('Searching for device group named %s', dg_name)
 
@@ -138,8 +178,14 @@ def gdgbn(dg_name: str, r_fields: str = '') -> logicmonitor_sdk.models.device_gr
 
     return response
 
-# Get escalation chain by name
 def gecbn(ec_name: str, r_fields: str = '') -> logicmonitor_sdk.models.escalation_chain_pagination_response.EscalationChainPaginationResponse:
+    """
+    Return a dictionary containing information about a LogicMonitor escalation chain.
+
+        ec_name  : LogicMonitor escalation chain name to retrieve information about.
+        r_fields : String containing comma separated values of dictionary key names to include
+                   in the returned dictionary.  By default it will return all keys/values.
+    """
     response = {}
     logger.info('Searching for escalation chain named %s', ec_name)
 
@@ -158,20 +204,28 @@ def gecbn(ec_name: str, r_fields: str = '') -> logicmonitor_sdk.models.escalatio
 
     return response
 
-# Patch device by ID
-# https://www.logicmonitor.com/support/rest-api-developers-guide/v1/devices/update-a-device#PATCH
-#  To add or update just one or a few device properties in the customProperties object, but not all
-#  of them, you’ll need to additionally use the opType query parameter. The opType query parameter
-#  can be set to add, refresh or replace.
-#
-#  opType=add indicates that the properties included in the payload will be added, but all existing
-#   properties will remain the same.
-#  opType=replace indicates that the properties included in the request payload will be added if
-#   they don’t already exist, or updated if they do already exist, but all other existing properties
-#   will remain the same.
-#  opType=refresh indicates that the properties will be replaced with those included in the request
-#   payload.
 def pdbi(d_id: int, payload: dict, patch_type: str = 'replace') -> bool:
+    """
+    Update a LogicMonitor device/resource properties with a properly formatted payload or object.
+
+    https://www.logicmonitor.com/support/rest-api-developers-guide/v1/devices/update-a-device#PATCH
+
+    To add or update just one or a few device properties in the customProperties object, but not all
+    of them, you’ll need to additionally use the opType query parameter. The opType query parameter
+    can be set to add, refresh or replace.
+
+    opType=add indicates that the properties included in the payload will be added, but all existing
+     properties will remain the same.
+    opType=replace indicates that the properties included in the request payload will be added if
+     they don’t already exist,or updated if they do already exist, but all other existing properties
+     will remain the same.
+    opType=refresh indicates that the properties will be replaced with those included in the request
+     payload.
+
+        d_id       : LogicMonitor device ID to update.
+        payload    : Properly formatted device property data used to update the target device.
+        patch_type : See explanation above.
+    """
     is_success = False
     response = {}
     logger.info('Patching device with ID %s via method %s', d_id, patch_type)
@@ -193,8 +247,13 @@ def pdbi(d_id: int, payload: dict, patch_type: str = 'replace') -> bool:
 
     return is_success
 
-# Patch collector by ID
 def pcbi(c_id: int, payload: dict) -> bool:
+    """
+    Update a LogicMonitor collector properties with a properly formatted payload or object.
+
+        c_id    : LogicMonitor collector ID to retrieve information about.
+        payload : Properly formatted collector property data used to update the target collector.
+    """
     is_success = False
     response = {}
 
@@ -216,8 +275,13 @@ def pcbi(c_id: int, payload: dict) -> bool:
 
     return is_success
 
-# Patch collector group by ID
 def pcgbi(cg_id: int, payload: dict) -> bool:
+    """
+    Update a LogicMonitor collector group properties with a properly formatted payload or object.
+
+        cg_id   : LogicMonitor collector group ID to retrieve information about.
+        payload : Properly formatted collector group property data used to update the target group.
+    """
     is_success = False
     response = {}
     logger.info('Patching collector group with ID %s', cg_id)
@@ -240,6 +304,11 @@ def pcgbi(cg_id: int, payload: dict) -> bool:
     return is_success
 
 def run_autodiscovery(d_id: int) -> bool:
+    """
+    Schedule an autodiscovery task on a LogicMonitor device.
+
+        d_id : LogicMonitor device ID to autodiscover.
+    """
     is_success = False
     response = {}
     logger.info('Scheduling auto-discovery for device with ID %s', d_id)
@@ -255,8 +324,20 @@ def run_autodiscovery(d_id: int) -> bool:
 
     return is_success
 
-# Wait for collector to device association to occur
 def wait_for_collector_assoc(c_id: str, max_try: int = 12, sleep_len: int = 10) -> bool:
+    """
+    LogicMonitor sometimes takes 60-90 seconds to update their back end that associates a
+    collector resource with the device resource the collector is running on.  Therefore, if we
+    don't wait until that association is complete, our attempts to set custom properties on a 
+    the collector VM resource or put that collector VM resource into a collector group will fail,
+    since the information returned by get_collector_by_id() will not include a collector_device_id
+    property, therefore we don't know what device to actually set properties on.
+
+        c_id      : LogicMonitor collector ID to retrieve information about.
+        max_try   : Maximum number of times to check for association between colletor and device
+                    before failing.
+        sleep_len : Number of seconds to wait between association checks
+    """
     is_success = False
     attempt = 1
 
@@ -279,8 +360,15 @@ def wait_for_collector_assoc(c_id: str, max_try: int = 12, sleep_len: int = 10) 
 
     return is_success
 
-# Download collector installer by ID
 def get_collector_installer(c_id: str, os_arch: str, size: str, use_ea: bool) -> str:
+    """
+    Download the collector-specific installer binary from LogicMonitor.
+
+        c_id    : LogicMonitor collector ID to retrieve information about.
+        os_arch : LogicMonitor-defined OS+Arch string combinaton such as Linux64 or Windows64.
+        size    : LogicMonitor-defined size string such as small, medium, or large.
+        use_ea  : Download the Early Access version of the collector, otherwise use GA.
+    """
     is_success = False
     logger.info('Downloading collector installer with ID %s', c_id)
 
@@ -661,6 +749,7 @@ def main():
     # Set the SNMPv3 properties on the collector resource/device
     elif args.action == 'snmp':
         snmp_props = [
+            {'name': 'system.categories', 'value': 'snmpTCPUDP,Netsnmp,snmpHR,snmp,collector' },
             {'name': 'snmp.security', 'value': args.snmp_security },
             {'name': 'snmp.auth', 'value': args.snmp_auth },
             {'name': 'snmp.priv', 'value': args.snmp_priv },
